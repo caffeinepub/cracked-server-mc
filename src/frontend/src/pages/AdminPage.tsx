@@ -13,7 +13,7 @@ import {
 // ============================================================
 // TO CHANGE ADMIN PASSWORD: Update the string "Admin1234" below
 // ============================================================
-const ADMIN_PASSWORD = "Admin1234";
+const ADMIN_PASSWORD = "dhruvyt@204";
 
 // Default empty form state
 const EMPTY_FORM = {

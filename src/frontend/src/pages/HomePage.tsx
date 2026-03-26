@@ -1,8 +1,11 @@
 import {
   Check,
+  ChevronDown,
+  ChevronUp,
   Cloud,
   Copy,
   Gamepad2,
+  MessageSquare,
   Palette,
   Search,
   Shield,
@@ -16,7 +19,54 @@ import { useCallback, useEffect, useState } from "react";
 import type { Server } from "../types/server";
 import { getServers, seedSampleServersIfEmpty } from "../utils/storage";
 
-// Tag color mapping for colored badge pills
+// ─── Review helpers (localStorage) ──────────────────────────────────────────
+
+export interface Review {
+  id: string;
+  serverid: string;
+  name: string;
+  text: string;
+  date: string;
+}
+
+function getReviews(serverId: string): Review[] {
+  try {
+    const raw = localStorage.getItem(`reviews_${serverId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveReview(review: Review) {
+  const existing = getReviews(review.serverid);
+  existing.push(review);
+  localStorage.setItem(`reviews_${review.serverid}`, JSON.stringify(existing));
+}
+
+function hasReviewed(serverId: string): boolean {
+  try {
+    const raw = localStorage.getItem("reviewed_servers");
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    return list.includes(serverId);
+  } catch {
+    return false;
+  }
+}
+
+function markReviewed(serverId: string) {
+  try {
+    const raw = localStorage.getItem("reviewed_servers");
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(serverId)) list.push(serverId);
+    localStorage.setItem("reviewed_servers", JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
+}
+
+// ─── Tag maps ────────────────────────────────────────────────────────────────
+
 const TAG_COLORS: Record<string, string> = {
   PVP: "bg-red-600 text-white",
   Survival: "bg-emerald-700 text-white",
@@ -30,7 +80,6 @@ const TAG_COLORS: Record<string, string> = {
   Roleplay: "bg-indigo-600 text-white",
 };
 
-// Tag icon mapping
 const TAG_ICONS: Record<string, React.ReactNode> = {
   PVP: <Sword className="w-3 h-3" />,
   Survival: <TreePine className="w-3 h-3" />,
@@ -54,7 +103,8 @@ const FILTER_TAGS = [
   "Vanilla",
 ];
 
-// Star rating display component
+// ─── StarRating ───────────────────────────────────────────────────────────────
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
@@ -71,7 +121,8 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-// Copy button with "Copied!" confirmation
+// ─── CopyButton ───────────────────────────────────────────────────────────────
+
 function CopyButton({ ip }: { ip: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -81,7 +132,6 @@ function CopyButton({ ip }: { ip: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const el = document.createElement("textarea");
       el.value = ip;
       document.body.appendChild(el);
@@ -117,7 +167,135 @@ function CopyButton({ ip }: { ip: string }) {
   );
 }
 
-// Individual server card
+// ─── ExperienceBox ────────────────────────────────────────────────────────────
+
+function ExperienceBox({ serverId }: { serverId: string }) {
+  const [open, setOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>(() => getReviews(serverId));
+  const [alreadyReviewed, setAlreadyReviewed] = useState(() =>
+    hasReviewed(serverId),
+  );
+  const [name, setName] = useState("");
+  const [text, setText] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !text.trim()) return;
+    const review: Review = {
+      id: crypto.randomUUID(),
+      serverid: serverId,
+      name: name.trim(),
+      text: text.trim(),
+      date: new Date().toLocaleDateString(),
+    };
+    saveReview(review);
+    markReviewed(serverId);
+    setReviews(getReviews(serverId));
+    setAlreadyReviewed(true);
+    setSubmitted(true);
+    setName("");
+    setText("");
+  };
+
+  return (
+    <div className="border-t border-border mt-2">
+      {/* Toggle button */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-1 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <MessageSquare className="w-3.5 h-3.5" />
+          Player Experiences ({reviews.length})
+        </span>
+        {open ? (
+          <ChevronUp className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronDown className="w-3.5 h-3.5" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="pb-3 flex flex-col gap-3">
+              {/* Existing reviews */}
+              {reviews.length > 0 && (
+                <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                  {reviews.map((r) => (
+                    <div
+                      key={r.id}
+                      className="bg-background rounded p-2 border border-border text-xs"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-primary font-semibold">
+                          {r.name}
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">
+                          {r.date}
+                        </span>
+                      </div>
+                      <p className="text-foreground/80 leading-relaxed">
+                        {r.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Submission form or messages */}
+              {submitted ? (
+                <p className="text-xs text-emerald-400 text-center py-1">
+                  ✓ Experience shared!
+                </p>
+              ) : alreadyReviewed ? (
+                <p className="text-xs text-muted-foreground text-center py-1">
+                  You already shared your experience for this server.
+                </p>
+              ) : (
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                  <input
+                    type="text"
+                    placeholder="Your name / username"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={32}
+                    className="bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+                  />
+                  <textarea
+                    placeholder="Share your experience on this server..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    maxLength={300}
+                    rows={3}
+                    className="bg-background border border-border rounded px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors resize-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!name.trim() || !text.trim()}
+                    className="w-full py-1.5 rounded text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+                  >
+                    Share Experience
+                  </button>
+                </form>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── ServerCard ───────────────────────────────────────────────────────────────
+
 function ServerCard({ server, index }: { server: Server; index: number }) {
   return (
     <motion.article
@@ -141,7 +319,6 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
               `https://picsum.photos/seed/${server.id}/400/250`;
           }}
         />
-        {/* Rating overlay top-right */}
         <div className="absolute top-2 right-2 bg-black/70 rounded px-2 py-1">
           <StarRating rating={server.rating} />
         </div>
@@ -149,7 +326,6 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
 
       {/* Card body */}
       <div className="p-4 flex flex-col gap-3 flex-1">
-        {/* Server name in pixel font */}
         <h2
           className="font-pixel text-primary text-xs leading-relaxed line-clamp-2"
           style={{ fontSize: "10px" }}
@@ -157,7 +333,6 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
           {server.name}
         </h2>
 
-        {/* IP address */}
         <p
           className="text-muted-foreground text-xs font-mono truncate"
           title={server.ip}
@@ -165,10 +340,8 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
           {server.ip}
         </p>
 
-        {/* Copy button */}
         <CopyButton ip={server.ip} />
 
-        {/* Tags */}
         {server.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-auto">
             {server.tags.map((tag) => (
@@ -184,23 +357,26 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
             ))}
           </div>
         )}
+
+        {/* ── Experience box ── */}
+        <ExperienceBox serverId={server.id} />
       </div>
     </motion.article>
   );
 }
+
+// ─── HomePage ─────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState("All");
 
-  // Seed sample data on first visit and load servers
   useEffect(() => {
     seedSampleServersIfEmpty();
     setServers(getServers());
   }, []);
 
-  // Filter servers by search query and active tag
   const filtered = servers.filter((s) => {
     const matchesSearch =
       search === "" ||
@@ -215,7 +391,6 @@ export default function HomePage() {
       {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-3">
             <span className="text-2xl">⛏️</span>
             <div>
@@ -233,8 +408,6 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-
-          {/* Nav */}
           <nav className="hidden sm:flex items-center gap-6">
             <a
               data-ocid="nav.link"
@@ -254,7 +427,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ===== HERO / SEARCH SECTION ===== */}
+      {/* ===== HERO / SEARCH ===== */}
       <section className="py-12 px-4" id="top">
         <div className="max-w-2xl mx-auto text-center">
           <motion.h2
@@ -274,8 +447,6 @@ export default function HomePage() {
           >
             PERFECT SERVER
           </motion.h2>
-
-          {/* Search bar */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -322,11 +493,9 @@ export default function HomePage() {
       {/* ===== SERVER GRID ===== */}
       <main className="flex-1 px-4 pb-12" id="servers">
         <div className="max-w-6xl mx-auto">
-          {/* Server count */}
           <p className="text-muted-foreground text-sm mb-6">
             {filtered.length} server{filtered.length !== 1 ? "s" : ""} found
           </p>
-
           <AnimatePresence mode="popLayout">
             {filtered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
