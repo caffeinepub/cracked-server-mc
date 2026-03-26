@@ -53,12 +53,53 @@ const SAMPLE_SERVERS: Server[] = [
     imageUrl: "https://picsum.photos/seed/vanillarealms/400/250",
     createdAt: "2026-02-18T11:20:00.000Z",
   },
+  {
+    id: "sample-6",
+    name: "LifeSteal SMP",
+    ip: "play.lifesteal-smp.net",
+    rating: 5,
+    tags: ["Lifesteal", "PVP", "Survival"],
+    imageUrl: "https://picsum.photos/seed/lifesteal/400/250",
+    createdAt: "2026-02-20T09:00:00.000Z",
+  },
+  {
+    id: "sample-7",
+    name: "BedWars Central",
+    ip: "bedwars.central-mc.net",
+    rating: 5,
+    tags: ["Bedwars", "Mini-Games"],
+    imageUrl: "https://picsum.photos/seed/bedwars/400/250",
+    createdAt: "2026-02-22T12:00:00.000Z",
+  },
+  {
+    id: "sample-8",
+    name: "CrackPvP Universe",
+    ip: "play.crackpvp.net",
+    rating: 4,
+    tags: ["PVP", "Factions"],
+    imageUrl: "https://picsum.photos/seed/crackpvp/400/250",
+    createdAt: "2026-03-01T10:00:00.000Z",
+  },
+  {
+    id: "sample-9",
+    name: "SurvivalWorld MC",
+    ip: "play.survivalworld.gg",
+    rating: 4,
+    tags: ["Survival", "Vanilla"],
+    imageUrl: "https://picsum.photos/seed/survivalworld/400/250",
+    createdAt: "2026-03-05T08:00:00.000Z",
+  },
+  {
+    id: "sample-10",
+    name: "HeartSteal Network",
+    ip: "heartsteal.network.gg",
+    rating: 4,
+    tags: ["Lifesteal", "PVP"],
+    imageUrl: "https://picsum.photos/seed/heartsteal/400/250",
+    createdAt: "2026-03-10T11:00:00.000Z",
+  },
 ];
 
-/**
- * Load all servers from localStorage.
- * Returns an empty array if no data exists.
- */
 export function getServers(): Server[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -69,17 +110,10 @@ export function getServers(): Server[] {
   }
 }
 
-/**
- * Save all servers to localStorage.
- */
 export function saveServers(servers: Server[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
 }
 
-/**
- * Seed localStorage with sample servers if no data exists yet.
- * Called on first visit to ensure the page isn't empty.
- */
 export function seedSampleServersIfEmpty(): void {
   const existing = localStorage.getItem(STORAGE_KEY);
   if (!existing) {
@@ -87,18 +121,12 @@ export function seedSampleServersIfEmpty(): void {
   }
 }
 
-/**
- * Add a new server to localStorage.
- */
 export function addServer(server: Server): void {
   const servers = getServers();
   servers.push(server);
   saveServers(servers);
 }
 
-/**
- * Update an existing server in localStorage by id.
- */
 export function updateServer(updated: Server): void {
   const servers = getServers();
   const idx = servers.findIndex((s) => s.id === updated.id);
@@ -108,9 +136,6 @@ export function updateServer(updated: Server): void {
   }
 }
 
-/**
- * Delete a server from localStorage by id.
- */
 export function deleteServer(id: string): void {
   const servers = getServers().filter((s) => s.id !== id);
   saveServers(servers);

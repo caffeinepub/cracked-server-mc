@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://crackedservermc.caffeine.site/sitemap.xml
