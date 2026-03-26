@@ -8,10 +8,78 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const Review = IDL.Record({
+  'id' : IDL.Text,
+  'date' : IDL.Text,
+  'name' : IDL.Text,
+  'text' : IDL.Text,
+  'serverId' : IDL.Text,
+});
+export const Server = IDL.Record({
+  'id' : IDL.Text,
+  'ip' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Text,
+  'tags' : IDL.Vec(IDL.Text),
+  'description' : IDL.Opt(IDL.Text),
+  'imageUrl' : IDL.Text,
+  'rating' : IDL.Nat,
+});
+export const SiteSettings = IDL.Record({ 'heroSubtitle' : IDL.Text });
+
+export const idlService = IDL.Service({
+  'addReview' : IDL.Func([Review], [], []),
+  'addServer' : IDL.Func([Server], [], []),
+  'deleteReview' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'deleteServer' : IDL.Func([IDL.Text], [], []),
+  'getAnnouncement' : IDL.Func([], [IDL.Text], ['query']),
+  'getLastUpdated' : IDL.Func([], [IDL.Int], ['query']),
+  'getReviews' : IDL.Func([IDL.Text], [IDL.Vec(Review)], ['query']),
+  'getServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
+  'getSiteSettings' : IDL.Func([], [SiteSettings], ['query']),
+  'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
+  'seedSampleServers' : IDL.Func([], [], []),
+  'setAnnouncement' : IDL.Func([IDL.Text], [], []),
+  'updateServer' : IDL.Func([Server], [], []),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const Review = IDL.Record({
+    'id' : IDL.Text,
+    'date' : IDL.Text,
+    'name' : IDL.Text,
+    'text' : IDL.Text,
+    'serverId' : IDL.Text,
+  });
+  const Server = IDL.Record({
+    'id' : IDL.Text,
+    'ip' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Text,
+    'tags' : IDL.Vec(IDL.Text),
+    'description' : IDL.Opt(IDL.Text),
+    'imageUrl' : IDL.Text,
+    'rating' : IDL.Nat,
+  });
+  const SiteSettings = IDL.Record({ 'heroSubtitle' : IDL.Text });
+  
+  return IDL.Service({
+    'addReview' : IDL.Func([Review], [], []),
+    'addServer' : IDL.Func([Server], [], []),
+    'deleteReview' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'deleteServer' : IDL.Func([IDL.Text], [], []),
+    'getAnnouncement' : IDL.Func([], [IDL.Text], ['query']),
+    'getLastUpdated' : IDL.Func([], [IDL.Int], ['query']),
+    'getReviews' : IDL.Func([IDL.Text], [IDL.Vec(Review)], ['query']),
+    'getServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
+    'getSiteSettings' : IDL.Func([], [SiteSettings], ['query']),
+    'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
+    'seedSampleServers' : IDL.Func([], [], []),
+    'setAnnouncement' : IDL.Func([IDL.Text], [], []),
+    'updateServer' : IDL.Func([Server], [], []),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

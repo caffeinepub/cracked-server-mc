@@ -14,56 +14,28 @@ import {
   Sword,
   TreePine,
   Wheat,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
-import type { Server } from "../types/server";
-import { getServers, seedSampleServersIfEmpty } from "../utils/storage";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { backendInterface } from "../backend";
+import { useActor } from "../hooks/useActor";
+import type { Review, Server } from "../types/server";
+import {
+  getLocalReviews,
+  hasReviewed,
+  markReviewed,
+  saveLocalReview,
+} from "../utils/storage";
 
-// ─── Review helpers (localStorage) ──────────────────────────────────────────
+export type { Review };
 
-export interface Review {
-  id: string;
-  serverid: string;
-  name: string;
-  text: string;
-  date: string;
-}
+// ─── Type conversion helpers ─────────────────────────────────────────────────
 
-function getReviews(serverId: string): Review[] {
-  try {
-    const raw = localStorage.getItem(`reviews_${serverId}`);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+type BackendServer = Omit<Server, "rating"> & { rating: bigint };
 
-function saveReview(review: Review) {
-  const existing = getReviews(review.serverid);
-  existing.push(review);
-  localStorage.setItem(`reviews_${review.serverid}`, JSON.stringify(existing));
-}
-
-function hasReviewed(serverId: string): boolean {
-  try {
-    const raw = localStorage.getItem("reviewed_servers");
-    const list: string[] = raw ? JSON.parse(raw) : [];
-    return list.includes(serverId);
-  } catch {
-    return false;
-  }
-}
-
-function markReviewed(serverId: string) {
-  try {
-    const raw = localStorage.getItem("reviewed_servers");
-    const list: string[] = raw ? JSON.parse(raw) : [];
-    if (!list.includes(serverId)) list.push(serverId);
-    localStorage.setItem("reviewed_servers", JSON.stringify(list));
-  } catch {
-    /* ignore */
-  }
+function toFrontendServer(s: BackendServer): Server {
+  return { ...s, rating: Number(s.rating) };
 }
 
 // ─── Tag maps ────────────────────────────────────────────────────────────────
@@ -178,7 +150,9 @@ function CopyButton({ ip }: { ip: string }) {
 
 function ExperienceBox({ serverId }: { serverId: string }) {
   const [open, setOpen] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>(() => getReviews(serverId));
+  const [reviews, setReviews] = useState<Review[]>(() =>
+    getLocalReviews(serverId),
+  );
   const [alreadyReviewed, setAlreadyReviewed] = useState(() =>
     hasReviewed(serverId),
   );
@@ -196,9 +170,9 @@ function ExperienceBox({ serverId }: { serverId: string }) {
       text: text.trim(),
       date: new Date().toLocaleDateString(),
     };
-    saveReview(review);
+    saveLocalReview(review);
     markReviewed(serverId);
-    setReviews(getReviews(serverId));
+    setReviews(getLocalReviews(serverId));
     setAlreadyReviewed(true);
     setSubmitted(true);
     setName("");
@@ -298,7 +272,7 @@ function ExperienceBox({ serverId }: { serverId: string }) {
   );
 }
 
-// ─── ServerCard (live listing) ────────────────────────────────────────────────
+// ─── ServerCard ───────────────────────────────────────────────────────────────
 
 function ServerCard({ server, index }: { server: Server; index: number }) {
   return (
@@ -336,6 +310,12 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
           {server.name}
         </h3>
 
+        {server.description && (
+          <p className="text-xs text-muted-foreground leading-relaxed -mt-1">
+            {server.description}
+          </p>
+        )}
+
         <CopyButton ip={server.ip} />
 
         {server.tags.length > 0 && (
@@ -360,18 +340,102 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
   );
 }
 
+// ─── Announcement Banner ──────────────────────────────────────────────────────
+
+function AnnouncementBanner({ text }: { text: string }) {
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!text || dismissed) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="relative bg-card border-l-4 border-primary px-5 py-3 flex items-start gap-3"
+      role="alert"
+    >
+      <span className="text-base shrink-0">📢</span>
+      <p className="text-sm text-foreground flex-1 leading-relaxed">{text}</p>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        data-ocid="announcement.close_button"
+        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+        aria-label="Dismiss announcement"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </motion.div>
+  );
+}
+
 // ─── HomePage ─────────────────────────────────────────────────────────────────
 
+async function loadSiteData(actor: backendInterface) {
+  const [rawServers, announcement, settings] = await Promise.all([
+    actor.getServers(),
+    actor.getAnnouncement(),
+    actor.getSiteSettings(),
+  ]);
+  const servers = (rawServers as BackendServer[]).map(toFrontendServer);
+  return { servers, announcement, settings };
+}
+
 export default function HomePage() {
+  const { actor, isFetching } = useActor();
   const [servers, setServers] = useState<Server[]>([]);
+  const [announcement, setAnnouncement] = useState("");
+  const [heroSubtitle, setHeroSubtitle] = useState("");
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState("All");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const lastUpdatedRef = useRef<bigint>(0n);
+  const seededRef = useRef(false);
 
+  // Initial load
   useEffect(() => {
-    seedSampleServersIfEmpty();
-    setServers(getServers());
-  }, []);
+    if (!actor || isFetching) return;
+    if (seededRef.current) return;
+    seededRef.current = true;
+
+    (async () => {
+      try {
+        await actor.seedSampleServers();
+        const data = await loadSiteData(actor);
+        setServers(data.servers);
+        setAnnouncement(data.announcement);
+        setHeroSubtitle(data.settings.heroSubtitle);
+        const ts = await actor.getLastUpdated();
+        lastUpdatedRef.current = ts;
+      } catch (err) {
+        console.error("Failed to load site data:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [actor, isFetching]);
+
+  // 30s polling for live updates
+  useEffect(() => {
+    if (!actor) return;
+    const interval = setInterval(async () => {
+      try {
+        const ts = await actor.getLastUpdated();
+        if (ts !== lastUpdatedRef.current) {
+          lastUpdatedRef.current = ts;
+          const data = await loadSiteData(actor);
+          setServers(data.servers);
+          setAnnouncement(data.announcement);
+          setHeroSubtitle(data.settings.heroSubtitle);
+        }
+      } catch {
+        /* silent poll failure */
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [actor]);
 
   const filtered = servers.filter((s) => {
     const matchesSearch =
@@ -384,8 +448,14 @@ export default function HomePage() {
 
   const navLinks = [{ label: "All Servers", href: "#servers" }];
 
+  const defaultSubtitle =
+    "Discover the top free Minecraft cracked servers — no premium account needed. Browse PVP, Lifesteal, Survival, and Bedwars servers with IPs, ratings, and player reviews.";
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* ===== ANNOUNCEMENT BANNER ===== */}
+      <AnnouncementBanner text={announcement} />
+
       {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -429,7 +499,6 @@ export default function HomePage() {
             </div>
           </button>
         </div>
-        {/* Mobile nav dropdown */}
         <AnimatePresence>
           {mobileNavOpen && (
             <motion.nav
@@ -459,7 +528,6 @@ export default function HomePage() {
       {/* ===== HERO / H1 / SEARCH ===== */}
       <section className="py-12 px-4" id="top">
         <div className="max-w-2xl mx-auto text-center">
-          {/* SEO H1 */}
           <h1
             className="font-pixel text-primary pixel-glow mb-6"
             style={{ fontSize: "clamp(10px, 2.5vw, 16px)", lineHeight: 1.8 }}
@@ -467,9 +535,7 @@ export default function HomePage() {
             BEST MINECRAFT CRACKED SERVERS 2026
           </h1>
           <p className="text-muted-foreground text-sm mb-8 leading-relaxed max-w-xl mx-auto">
-            Discover the top free Minecraft cracked servers — no premium account
-            needed. Browse PVP, Lifesteal, Survival, and Bedwars servers with
-            IPs, ratings, and player reviews.
+            {heroSubtitle || defaultSubtitle}
           </p>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -518,48 +584,65 @@ export default function HomePage() {
       {/* ===== SERVER GRID ===== */}
       <main className="flex-1 px-4 pb-12" id="servers">
         <div className="max-w-6xl mx-auto">
-          <p className="text-muted-foreground text-sm mb-6">
-            {filtered.length} server{filtered.length !== 1 ? "s" : ""} found
-          </p>
-          <AnimatePresence mode="popLayout">
-            {filtered.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map((server, i) => (
-                  <ServerCard key={server.id} server={server} index={i} />
-                ))}
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                data-ocid="servers.empty_state"
-                className="text-center py-20"
+          {loading ? (
+            <div
+              data-ocid="servers.loading_state"
+              className="flex flex-col items-center justify-center py-24 gap-4"
+            >
+              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p
+                className="font-pixel text-muted-foreground"
+                style={{ fontSize: "9px", lineHeight: 2 }}
               >
-                <p className="text-6xl mb-4">🔍</p>
-                <p
-                  className="font-pixel text-muted-foreground"
-                  style={{ fontSize: "10px", lineHeight: 2 }}
-                >
-                  NO SERVERS FOUND
-                </p>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Try a different search term or tag filter.
-                </p>
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearch("");
-                      setActiveTag("All");
-                    }}
-                    className="mt-4 px-4 py-2 border border-primary text-primary rounded hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+                LOADING SERVERS...
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-sm mb-6">
+                {filtered.length} server{filtered.length !== 1 ? "s" : ""} found
+              </p>
+              <AnimatePresence mode="popLayout">
+                {filtered.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filtered.map((server, i) => (
+                      <ServerCard key={server.id} server={server} index={i} />
+                    ))}
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    data-ocid="servers.empty_state"
+                    className="text-center py-20"
                   >
-                    Clear filters
-                  </button>
+                    <p className="text-6xl mb-4">🔍</p>
+                    <p
+                      className="font-pixel text-muted-foreground"
+                      style={{ fontSize: "10px", lineHeight: 2 }}
+                    >
+                      NO SERVERS FOUND
+                    </p>
+                    <p className="text-muted-foreground text-sm mt-2">
+                      Try a different search term or tag filter.
+                    </p>
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setActiveTag("All");
+                        }}
+                        className="mt-4 px-4 py-2 border border-primary text-primary rounded hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </motion.div>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </AnimatePresence>
+            </>
+          )}
         </div>
       </main>
 

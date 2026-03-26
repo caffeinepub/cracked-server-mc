@@ -10,7 +10,39 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export interface Review {
+  'id' : string,
+  'date' : string,
+  'name' : string,
+  'text' : string,
+  'serverId' : string,
+}
+export interface Server {
+  'id' : string,
+  'ip' : string,
+  'name' : string,
+  'createdAt' : string,
+  'tags' : Array<string>,
+  'description' : [] | [string],
+  'imageUrl' : string,
+  'rating' : bigint,
+}
+export interface SiteSettings { 'heroSubtitle' : string }
+export interface _SERVICE {
+  'addReview' : ActorMethod<[Review], undefined>,
+  'addServer' : ActorMethod<[Server], undefined>,
+  'deleteReview' : ActorMethod<[string, string], undefined>,
+  'deleteServer' : ActorMethod<[string], undefined>,
+  'getAnnouncement' : ActorMethod<[], string>,
+  'getLastUpdated' : ActorMethod<[], bigint>,
+  'getReviews' : ActorMethod<[string], Array<Review>>,
+  'getServers' : ActorMethod<[], Array<Server>>,
+  'getSiteSettings' : ActorMethod<[], SiteSettings>,
+  'saveSiteSettings' : ActorMethod<[SiteSettings], undefined>,
+  'seedSampleServers' : ActorMethod<[], undefined>,
+  'setAnnouncement' : ActorMethod<[string], undefined>,
+  'updateServer' : ActorMethod<[Server], undefined>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

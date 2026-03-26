@@ -25,6 +25,7 @@ export interface Server {
   tags: string[];
   imageUrl: string;
   createdAt: string; // ISO date string
+  description?: string; // Optional short description shown on card
 }
 
 // All available tags for filtering and selection
@@ -42,3 +43,12 @@ export const ALL_TAGS = [
 ] as const;
 
 export type TagName = (typeof ALL_TAGS)[number];
+
+// Shared review type used across pages and storage utilities
+export interface Review {
+  id: string;
+  serverid: string;
+  name: string;
+  text: string;
+  date: string;
+}
