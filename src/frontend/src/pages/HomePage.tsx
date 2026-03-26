@@ -550,18 +550,29 @@ export default function HomePage() {
               CRACKED SERVER MC
             </span>
           </div>
-          <p className="text-muted-foreground text-xs text-center">
-            © {new Date().getFullYear()}. Built with{" "}
-            <span className="text-red-500">♥</span> using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-muted-foreground text-xs text-center">
+              © {new Date().getFullYear()}. Built with{" "}
+              <span className="text-red-500">♥</span> using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                caffeine.ai
+              </a>
+            </p>
+            <p className="text-muted-foreground text-xs text-center">
+              For business inquiries:{" "}
+              <a
+                href="mailto:zodiacmc11@gmail.com"
+                className="text-primary hover:underline"
+              >
+                zodiacmc11@gmail.com
+              </a>
+            </p>
+          </div>
         </div>
       </footer>
     </div>
