@@ -33,14 +33,52 @@ type AdminTab = "servers" | "reviews" | "settings";
 
 // ─── Type helpers ────────────────────────────────────────────────────────────
 
-type BackendServer = Omit<Server, "rating"> & { rating: bigint };
+import type { Server as BackendServerType } from "../backend";
+type BackendServer = BackendServerType;
 
 function toFrontendServer(s: BackendServer): Server {
-  return { ...s, rating: Number(s.rating) };
+  return {
+    id: s.id,
+    name: s.name,
+    ip: s.ip,
+    imageUrl: s.imageUrl,
+    createdAt: s.createdAt,
+    tags: s.tags,
+    rating: Number(s.rating),
+    description: (s.description as string[])[0] as string | undefined,
+    ytVideoUrl: s.ytVideoUrl[0],
+    website: s.website[0],
+    discordUrl: s.discordUrl[0],
+    version: s.version[0],
+    maxPlayers:
+      s.maxPlayers[0] !== undefined ? Number(s.maxPlayers[0]) : undefined,
+    location: s.location[0],
+    gameMode: s.gameMode[0],
+    status: s.status[0],
+  };
 }
 
 function toBackendServer(s: Server): BackendServer {
-  return { ...s, rating: BigInt(s.rating) };
+  return {
+    id: s.id,
+    name: s.name,
+    ip: s.ip,
+    imageUrl: s.imageUrl || "",
+    createdAt: s.createdAt,
+    tags: s.tags,
+    rating: BigInt(s.rating),
+    description: (s.description ? [s.description] : []) as [] | [string],
+    ytVideoUrl: (s.ytVideoUrl ? [s.ytVideoUrl] : []) as [] | [string],
+    website: (s.website ? [s.website] : []) as [] | [string],
+    discordUrl: (s.discordUrl ? [s.discordUrl] : []) as [] | [string],
+    version: (s.version ? [s.version] : []) as [] | [string],
+    maxPlayers: (s.maxPlayers !== undefined ? [BigInt(s.maxPlayers)] : []) as
+      | []
+      | [bigint],
+    location: (s.location ? [s.location] : []) as [] | [string],
+    gameMode: (s.gameMode ? [s.gameMode] : []) as [] | [string],
+    status: (s.status ? [s.status] : []) as [] | [string],
+  };
 }
 
 // ─── BackendReview (from actor) ───────────────────────────────────────────────
@@ -104,6 +142,7 @@ function StarSelector({
   onChange,
 }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = useState(0);
+
   return (
     <div className="flex gap-1" aria-label="Select rating">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -440,6 +479,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [lookupLoading, setLookupLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("servers");
   const [toast, setToast] = useState<Toast | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -623,6 +663,57 @@ export default function AdminPage() {
     { id: "settings", label: "Site Settings", icon: "⚙️" },
   ];
 
+  async function lookupServerIp() {
+    const ip = form.ip.trim();
+    if (!ip) return;
+    setLookupLoading(true);
+    try {
+      const res = await fetch(
+        `https://api.mcsrvstat.us/2/${encodeURIComponent(ip)}`,
+      );
+      if (!res.ok) throw new Error("HTTP error");
+      const data = await res.json();
+      if (data.online) {
+        setForm((p) => ({
+          ...p,
+          name:
+            p.name ||
+            data.hostname ||
+            data.motd?.clean?.[0]?.replace(/§./g, "") ||
+            p.name,
+          version: p.version || data.version || p.version,
+          maxPlayers:
+            p.maxPlayers ||
+            (data.players?.max != null
+              ? String(data.players.max)
+              : p.maxPlayers),
+          status: "Online",
+          description:
+            p.description ||
+            (data.motd?.clean && data.motd.clean.length > 1
+              ? data.motd.clean
+                  .slice(1)
+                  .map((l: string) => l.replace(/§./g, ""))
+                  .join("\n")
+              : p.description),
+        }));
+      } else {
+        setForm((p) => ({ ...p, status: "Offline" }));
+        setToast({
+          type: "error",
+          message: "Server is offline — details not available",
+        });
+      }
+    } catch {
+      setToast({
+        type: "error",
+        message: "Could not reach the server status API",
+      });
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Toast */}
@@ -766,17 +857,31 @@ export default function AdminPage() {
                     >
                       Server IP *
                     </label>
-                    <input
-                      id="field-ip"
-                      type="text"
-                      value={form.ip}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, ip: e.target.value }))
-                      }
-                      placeholder="play.yourserver.net"
-                      data-ocid="admin.ip.input"
-                      className={inputCls}
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        id="field-ip"
+                        type="text"
+                        value={form.ip}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, ip: e.target.value }))
+                        }
+                        placeholder="play.yourserver.net"
+                        data-ocid="admin.ip.input"
+                        className={`${inputCls} flex-1`}
+                      />
+                      <button
+                        type="button"
+                        onClick={lookupServerIp}
+                        disabled={lookupLoading || !form.ip.trim()}
+                        data-ocid="admin.ip.lookup_button"
+                        className="px-3 py-2 rounded text-sm font-semibold bg-[#0f0f0f] border border-[#39ff14] text-[#39ff14] hover:bg-[#39ff14]/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 whitespace-nowrap"
+                      >
+                        {lookupLoading ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : null}
+                        Lookup
+                      </button>
+                    </div>
                   </div>
 
                   {/* YouTube Video URL */}

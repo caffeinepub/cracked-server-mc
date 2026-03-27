@@ -32,10 +32,29 @@ export type { Review };
 
 // ─── Type conversion helpers ─────────────────────────────────────────────────
 
-type BackendServer = Omit<Server, "rating"> & { rating: bigint };
+import type { Server as BackendServerType } from "../backend";
+type BackendServer = BackendServerType;
 
 function toFrontendServer(s: BackendServer): Server {
-  return { ...s, rating: Number(s.rating) };
+  return {
+    id: s.id,
+    name: s.name,
+    ip: s.ip,
+    imageUrl: s.imageUrl,
+    createdAt: s.createdAt,
+    tags: s.tags,
+    rating: Number(s.rating),
+    description: (s.description as string[])[0] as string | undefined,
+    ytVideoUrl: s.ytVideoUrl[0],
+    website: s.website[0],
+    discordUrl: s.discordUrl[0],
+    version: s.version[0],
+    maxPlayers:
+      s.maxPlayers[0] !== undefined ? Number(s.maxPlayers[0]) : undefined,
+    location: s.location[0],
+    gameMode: s.gameMode[0],
+    status: s.status[0],
+  };
 }
 
 // ─── Tag maps ────────────────────────────────────────────────────────────────

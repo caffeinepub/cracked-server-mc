@@ -23,9 +23,17 @@ export interface Server {
     name: string;
     createdAt: string;
     tags: Array<string>;
-    description?: string;
+    description: [] | [string];
     imageUrl: string;
     rating: bigint;
+    ytVideoUrl: [] | [string];
+    website: [] | [string];
+    discordUrl: [] | [string];
+    version: [] | [string];
+    maxPlayers: [] | [bigint];
+    location: [] | [string];
+    gameMode: [] | [string];
+    status: [] | [string];
 }
 export interface backendInterface {
     addReview(review: Review): Promise<void>;

@@ -105,9 +105,17 @@ export interface Server {
     name: string;
     createdAt: string;
     tags: Array<string>;
-    description?: string;
+    description: [] | [string];
     imageUrl: string;
     rating: bigint;
+    ytVideoUrl: [] | [string];
+    website: [] | [string];
+    discordUrl: [] | [string];
+    version: [] | [string];
+    maxPlayers: [] | [bigint];
+    location: [] | [string];
+    gameMode: [] | [string];
+    status: [] | [string];
 }
 export interface backendInterface {
     addReview(review: Review): Promise<void>;
@@ -316,34 +324,24 @@ function from_candid_Server_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    id: string;
-    ip: string;
-    name: string;
-    createdAt: string;
-    tags: Array<string>;
-    description: [] | [string];
-    imageUrl: string;
-    rating: bigint;
-}): {
-    id: string;
-    ip: string;
-    name: string;
-    createdAt: string;
-    tags: Array<string>;
-    description?: string;
-    imageUrl: string;
-    rating: bigint;
-} {
+function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Server): Server {
     return {
         id: value.id,
         ip: value.ip,
         name: value.name,
         createdAt: value.createdAt,
         tags: value.tags,
-        description: record_opt_to_undefined(from_candid_opt_n6(_uploadFile, _downloadFile, value.description)),
+        description: (value as any).description ?? [],
         imageUrl: value.imageUrl,
-        rating: value.rating
+        rating: value.rating,
+        ytVideoUrl: (value as any).ytVideoUrl ?? [],
+        website: (value as any).website ?? [],
+        discordUrl: (value as any).discordUrl ?? [],
+        version: (value as any).version ?? [],
+        maxPlayers: (value as any).maxPlayers ?? [],
+        location: (value as any).location ?? [],
+        gameMode: (value as any).gameMode ?? [],
+        status: (value as any).status ?? [],
     };
 }
 function from_candid_vec_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Server>): Array<Server> {
@@ -352,35 +350,25 @@ function from_candid_vec_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function to_candid_Server_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Server): _Server {
     return to_candid_record_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    id: string;
-    ip: string;
-    name: string;
-    createdAt: string;
-    tags: Array<string>;
-    description?: string;
-    imageUrl: string;
-    rating: bigint;
-}): {
-    id: string;
-    ip: string;
-    name: string;
-    createdAt: string;
-    tags: Array<string>;
-    description: [] | [string];
-    imageUrl: string;
-    rating: bigint;
-} {
+function to_candid_record_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Server): _Server {
     return {
         id: value.id,
         ip: value.ip,
         name: value.name,
         createdAt: value.createdAt,
         tags: value.tags,
-        description: value.description ? candid_some(value.description) : candid_none(),
+        description: value.description,
         imageUrl: value.imageUrl,
-        rating: value.rating
-    };
+        rating: value.rating,
+        ytVideoUrl: value.ytVideoUrl,
+        website: value.website,
+        discordUrl: value.discordUrl,
+        version: value.version,
+        maxPlayers: value.maxPlayers,
+        location: value.location,
+        gameMode: value.gameMode,
+        status: value.status,
+    } as unknown as _Server;
 }
 export interface CreateActorOptions {
     agent?: Agent;

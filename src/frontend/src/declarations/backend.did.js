@@ -24,6 +24,14 @@ export const Server = IDL.Record({
   'description' : IDL.Opt(IDL.Text),
   'imageUrl' : IDL.Text,
   'rating' : IDL.Nat,
+  'ytVideoUrl' : IDL.Opt(IDL.Text),
+  'website' : IDL.Opt(IDL.Text),
+  'discordUrl' : IDL.Opt(IDL.Text),
+  'version' : IDL.Opt(IDL.Text),
+  'maxPlayers' : IDL.Opt(IDL.Nat),
+  'location' : IDL.Opt(IDL.Text),
+  'gameMode' : IDL.Opt(IDL.Text),
+  'status' : IDL.Opt(IDL.Text),
 });
 export const SiteSettings = IDL.Record({ 'heroSubtitle' : IDL.Text });
 
@@ -62,6 +70,14 @@ export const idlFactory = ({ IDL }) => {
     'description' : IDL.Opt(IDL.Text),
     'imageUrl' : IDL.Text,
     'rating' : IDL.Nat,
+    'ytVideoUrl' : IDL.Opt(IDL.Text),
+    'website' : IDL.Opt(IDL.Text),
+    'discordUrl' : IDL.Opt(IDL.Text),
+    'version' : IDL.Opt(IDL.Text),
+    'maxPlayers' : IDL.Opt(IDL.Nat),
+    'location' : IDL.Opt(IDL.Text),
+    'gameMode' : IDL.Opt(IDL.Text),
+    'status' : IDL.Opt(IDL.Text),
   });
   const SiteSettings = IDL.Record({ 'heroSubtitle' : IDL.Text });
   

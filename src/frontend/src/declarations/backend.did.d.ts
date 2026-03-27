@@ -26,6 +26,14 @@ export interface Server {
   'description' : [] | [string],
   'imageUrl' : string,
   'rating' : bigint,
+  'ytVideoUrl' : [] | [string],
+  'website' : [] | [string],
+  'discordUrl' : [] | [string],
+  'version' : [] | [string],
+  'maxPlayers' : [] | [bigint],
+  'location' : [] | [string],
+  'gameMode' : [] | [string],
+  'status' : [] | [string],
 }
 export interface SiteSettings { 'heroSubtitle' : string }
 export interface _SERVICE {
