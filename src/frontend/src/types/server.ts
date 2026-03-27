@@ -1,22 +1,5 @@
-/**
- * Server data structure stored in localStorage under key "mc_servers".
- *
- * HOW TO MANUALLY ADD SERVERS VIA BROWSER CONSOLE:
- * 1. Open DevTools > Console
- * 2. Run:
- *    const servers = JSON.parse(localStorage.getItem('mc_servers') || '[]');
- *    servers.push({
- *      id: crypto.randomUUID(),
- *      name: 'My Server Name',
- *      ip: 'play.myserver.net',
- *      rating: 4,
- *      tags: ['Survival', 'PVP'],
- *      imageUrl: 'https://picsum.photos/seed/myserver/400/300',
- *      createdAt: new Date().toISOString()
- *    });
- *    localStorage.setItem('mc_servers', JSON.stringify(servers));
- * 3. Refresh the page.
- */
+// ─── Server ───────────────────────────────────────────────────────────────────
+
 export interface Server {
   id: string;
   name: string;
@@ -26,6 +9,7 @@ export interface Server {
   imageUrl: string;
   createdAt: string; // ISO date string
   description?: string; // Optional short description shown on card
+  ytVideoUrl?: string; // Optional YouTube video URL
 }
 
 // All available tags for filtering and selection

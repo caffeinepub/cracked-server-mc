@@ -284,37 +284,44 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
       data-ocid={`server.item.${index + 1}`}
       className="server-card bg-card rounded-lg border border-border overflow-hidden flex flex-col"
     >
-      <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-        <img
-          src={
-            server.imageUrl || `https://picsum.photos/seed/${server.id}/400/250`
-          }
-          alt={server.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src =
-              `https://picsum.photos/seed/${server.id}/400/250`;
-          }}
-        />
-        <div className="absolute top-2 right-2 bg-black/70 rounded px-2 py-1">
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className="font-pixel text-primary text-xs leading-relaxed"
+            style={{ fontSize: "10px" }}
+          >
+            {server.name}
+          </h3>
           <StarRating rating={server.rating} />
         </div>
-      </div>
-
-      <div className="p-4 flex flex-col gap-3 flex-1">
-        <h3
-          className="font-pixel text-primary text-xs leading-relaxed line-clamp-2"
-          style={{ fontSize: "10px" }}
-        >
-          {server.name}
-        </h3>
 
         {server.description && (
-          <p className="text-xs text-muted-foreground leading-relaxed -mt-1">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             {server.description}
           </p>
         )}
+
+        {server.ytVideoUrl &&
+          (() => {
+            const ytId = server.ytVideoUrl.match(
+              /(?:v=|youtu\.be\/)([^&?/]+)/,
+            )?.[1];
+            return ytId ? (
+              <div
+                className="relative w-full overflow-hidden rounded"
+                style={{ aspectRatio: "16/9" }}
+              >
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}`}
+                  title={`${server.name} video`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                  loading="lazy"
+                />
+              </div>
+            ) : null;
+          })()}
 
         <CopyButton ip={server.ip} />
 

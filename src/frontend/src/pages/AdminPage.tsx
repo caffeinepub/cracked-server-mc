@@ -16,8 +16,8 @@ const EMPTY_FORM = {
   ip: "",
   rating: 3,
   tags: [] as string[],
-  imageUrl: "",
   description: "",
+  ytVideoUrl: "",
   customTag: "",
 };
 
@@ -489,8 +489,8 @@ export default function AdminPage() {
       ip: server.ip,
       rating: server.rating,
       tags: [...server.tags],
-      imageUrl: server.imageUrl,
       description: server.description ?? "",
+      ytVideoUrl: server.ytVideoUrl ?? "",
       customTag: "",
     });
     setShowForm(true);
@@ -536,8 +536,9 @@ export default function AdminPage() {
       ip: form.ip.trim(),
       rating: form.rating,
       tags: form.tags,
-      imageUrl: form.imageUrl.trim(),
+      imageUrl: "",
       description: form.description.trim() || undefined,
+      ytVideoUrl: form.ytVideoUrl.trim() || undefined,
       createdAt: editingId
         ? (servers.find((s) => s.id === editingId)?.createdAt ??
           new Date().toISOString())
@@ -753,23 +754,24 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  {/* Image URL */}
+                  {/* YouTube Video URL */}
                   <div className="space-y-1 md:col-span-2">
                     <label
-                      htmlFor="field-image"
+                      htmlFor="field-yt"
                       className="text-sm text-muted-foreground"
                     >
-                      Image URL
+                      YouTube Video URL{" "}
+                      <span className="text-xs opacity-60">(optional)</span>
                     </label>
                     <input
-                      id="field-image"
+                      id="field-yt"
                       type="url"
-                      value={form.imageUrl}
+                      value={form.ytVideoUrl}
                       onChange={(e) =>
-                        setForm((p) => ({ ...p, imageUrl: e.target.value }))
+                        setForm((p) => ({ ...p, ytVideoUrl: e.target.value }))
                       }
-                      placeholder="https://example.com/server-image.jpg"
-                      data-ocid="admin.image.input"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      data-ocid="admin.yt.input"
                       className={inputCls}
                     />
                   </div>
@@ -934,18 +936,6 @@ export default function AdminPage() {
                     data-ocid={`admin.server.item.${i + 1}`}
                     className="bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
                   >
-                    <img
-                      src={
-                        server.imageUrl ||
-                        `https://picsum.photos/seed/${server.id}/80/60`
-                      }
-                      alt={server.name}
-                      className="w-20 h-14 object-cover rounded shrink-0"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          `https://picsum.photos/seed/${server.id}/80/60`;
-                      }}
-                    />
                     <div className="flex-1 min-w-0">
                       <p
                         className="font-pixel text-primary truncate"
@@ -959,6 +949,11 @@ export default function AdminPage() {
                       {server.description && (
                         <p className="text-muted-foreground text-xs mt-1 line-clamp-1">
                           {server.description}
+                        </p>
+                      )}
+                      {server.ytVideoUrl && (
+                        <p className="text-xs mt-1 text-red-400">
+                          📺 YouTube video linked
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
