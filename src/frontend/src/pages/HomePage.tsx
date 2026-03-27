@@ -728,41 +728,80 @@ export default function HomePage() {
       </main>
 
       {/* ===== FOOTER ===== */}
-      <footer className="bg-card border-t border-border py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⛏️</span>
-            <span
-              className="font-pixel text-muted-foreground"
-              style={{ fontSize: "8px" }}
-            >
-              CRACKED SERVER MC
+      <footer
+        style={{
+          backgroundColor: "#111",
+          color: "#fff",
+          padding: "30px 20px",
+          fontFamily: "Arial, sans-serif",
+          textAlign: "center",
+          fontSize: "14px",
+          lineHeight: "1.6",
+        }}
+      >
+        <p>© 2026 ZodiacMC – All rights reserved.</p>
+        <p>
+          Minecraft® is a trademark of Mojang Studios / Microsoft Corporation.
+          This site is not affiliated with or endorsed by Mojang or Microsoft.
+        </p>
+        <p>
+          The top servers listed may include paid or featured slots, marked with
+          a <span style={{ color: "#0000ff" }}>★</span> icon. These featured
+          placements can be purchased{" "}
+          <a
+            href="mailto:zodiacmc11@gmail.com"
+            style={{ color: "#0000ff", textDecoration: "none" }}
+          >
+            here
+          </a>
+          .
+        </p>
+        <p>
+          {[
+            { label: "Contact", href: "/contact" },
+            { label: "Terms of Service", href: "/terms" },
+            { label: "Privacy Policy", href: "/privacy" },
+            { label: "Sale Terms", href: "/sale-terms" },
+            { label: "FAQ", href: "/faq" },
+          ].map((link, i, arr) => (
+            <span key={link.href}>
+              <a
+                href={link.href}
+                style={{ color: "#0000ff", textDecoration: "none" }}
+              >
+                {link.label}
+              </a>
+              {i < arr.length - 1 && " | "}
             </span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-muted-foreground text-xs text-center">
-              © {new Date().getFullYear()}. Built with{" "}
-              <span className="text-red-500">♥</span> using{" "}
+          ))}
+        </p>
+        <p>
+          {[
+            { label: "Partners", href: "/partners" },
+            { label: "Service Status", href: "/service-status" },
+            { label: "OptiFine Downloads", href: "/optifine-downloads" },
+          ].map((link, i, arr) => (
+            <span key={link.href}>
               <a
-                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                href={link.href}
+                style={{ color: "#0000ff", textDecoration: "none" }}
               >
-                caffeine.ai
+                {link.label}
               </a>
-            </p>
-            <p className="text-muted-foreground text-xs text-center">
-              For business inquiries:{" "}
-              <a
-                href="mailto:zodiacmc11@gmail.com"
-                className="text-primary hover:underline"
-              >
-                zodiacmc11@gmail.com
-              </a>
-            </p>
-          </div>
-        </div>
+              {i < arr.length - 1 && " | "}
+            </span>
+          ))}
+        </p>
+        <p>
+          Tracking {servers.length} server{servers.length !== 1 ? "s" : ""},
+          with a total of {(() => {
+            const total = servers.reduce((sum, s) => {
+              return s.maxPlayers !== undefined ? sum + s.maxPlayers : sum;
+            }, 0);
+            const hasAny = servers.some((s) => s.maxPlayers !== undefined);
+            return hasAny ? total : "N/A";
+          })()} players online.
+        </p>
       </footer>
     </div>
   );
