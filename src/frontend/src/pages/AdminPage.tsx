@@ -388,7 +388,7 @@ export default function AdminPage() {
             >
               ⚔ Admin Panel
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">ZodiacMC</p>
+            <p className="text-xs text-muted-foreground mt-1">MINE lister</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <Input
@@ -438,7 +438,7 @@ export default function AdminPage() {
       >
         <div className="flex items-center gap-3">
           <span className="font-bold" style={{ color: "oklch(0.88 0.22 158)" }}>
-            ⚔ ZodiacMC Admin
+            ⚔ MINE lister Admin
           </span>
         </div>
         <div className="flex items-center gap-2">

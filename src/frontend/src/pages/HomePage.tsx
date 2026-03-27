@@ -875,7 +875,7 @@ export default function HomePage() {
               className="text-lg font-bold"
               style={{ color: "oklch(0.88 0.22 158)" }}
             >
-              ZodiacMC
+              MINE lister
             </span>
           </div>
           <a
@@ -1110,7 +1110,7 @@ export default function HomePage() {
         style={{ background: "oklch(0.10 0.01 270)", lineHeight: 1.8 }}
       >
         <p className="mb-2 text-foreground font-medium">
-          © {new Date().getFullYear()} ZodiacMC – All rights reserved.
+          © {new Date().getFullYear()} MINE lister – All rights reserved.
         </p>
         <p className="mb-2 text-xs max-w-2xl mx-auto">
           Minecraft® is a trademark of Mojang Studios / Microsoft Corporation.
