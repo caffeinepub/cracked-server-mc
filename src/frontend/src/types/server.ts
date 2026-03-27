@@ -1,4 +1,4 @@
-// ─── Server ───────────────────────────────────────────────────────────────────
+// ─── Server ─────────────────────────────────────────────────────────────────────────────────
 
 export interface Server {
   id: string;
@@ -8,8 +8,15 @@ export interface Server {
   tags: string[];
   imageUrl: string;
   createdAt: string; // ISO date string
-  description?: string; // Optional short description shown on card
-  ytVideoUrl?: string; // Optional YouTube video URL
+  description?: string;
+  ytVideoUrl?: string;
+  website?: string;
+  discordUrl?: string;
+  version?: string; // e.g. "1.8-1.20"
+  maxPlayers?: number;
+  location?: string; // e.g. "US", "EU"
+  gameMode?: string; // e.g. "Survival", "PvP"
+  status?: string; // "Online" | "Offline" | "Unknown"
 }
 
 // All available tags for filtering and selection

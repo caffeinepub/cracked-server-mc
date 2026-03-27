@@ -301,6 +301,80 @@ function ServerCard({ server, index }: { server: Server; index: number }) {
           </p>
         )}
 
+        {/* Server Info Chips */}
+        {(server.status ||
+          server.version ||
+          server.maxPlayers !== undefined ||
+          server.location ||
+          server.gameMode ||
+          server.website ||
+          server.discordUrl) && (
+          <div className="flex flex-wrap gap-1.5">
+            {server.status && (
+              <span
+                className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border ${
+                  server.status === "Online"
+                    ? "bg-emerald-950 border-emerald-700 text-emerald-400"
+                    : server.status === "Offline"
+                      ? "bg-red-950 border-red-700 text-red-400"
+                      : "bg-gray-800 border-gray-600 text-gray-400"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    server.status === "Online"
+                      ? "bg-emerald-400"
+                      : server.status === "Offline"
+                        ? "bg-red-400"
+                        : "bg-gray-400"
+                  }`}
+                />
+                {server.status}
+              </span>
+            )}
+            {server.version && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-600 text-gray-300">
+                📦 {server.version}
+              </span>
+            )}
+            {server.maxPlayers !== undefined && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-600 text-gray-300">
+                👥 {server.maxPlayers}
+              </span>
+            )}
+            {server.location && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-600 text-gray-300">
+                📍 {server.location}
+              </span>
+            )}
+            {server.gameMode && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-600 text-gray-300">
+                🎮 {server.gameMode}
+              </span>
+            )}
+            {server.website && (
+              <a
+                href={server.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20 transition-colors"
+              >
+                🌐 Website
+              </a>
+            )}
+            {server.discordUrl && (
+              <a
+                href={server.discordUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-900/40 border border-indigo-600/40 text-indigo-300 hover:bg-indigo-900/60 transition-colors"
+              >
+                💬 Discord
+              </a>
+            )}
+          </div>
+        )}
+
         {server.ytVideoUrl &&
           (() => {
             const ytId = server.ytVideoUrl.match(

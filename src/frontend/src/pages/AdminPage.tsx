@@ -19,6 +19,13 @@ const EMPTY_FORM = {
   description: "",
   ytVideoUrl: "",
   customTag: "",
+  website: "",
+  discordUrl: "",
+  version: "",
+  maxPlayers: "",
+  location: "",
+  gameMode: "",
+  status: "Unknown",
 };
 
 type FormState = typeof EMPTY_FORM;
@@ -436,6 +443,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("servers");
   const [toast, setToast] = useState<Toast | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const showToast = useCallback((t: Toast) => {
     setToast(t);
@@ -492,6 +500,14 @@ export default function AdminPage() {
       description: server.description ?? "",
       ytVideoUrl: server.ytVideoUrl ?? "",
       customTag: "",
+      website: server.website ?? "",
+      discordUrl: server.discordUrl ?? "",
+      version: server.version ?? "",
+      maxPlayers:
+        server.maxPlayers !== undefined ? String(server.maxPlayers) : "",
+      location: server.location ?? "",
+      gameMode: server.gameMode ?? "",
+      status: server.status ?? "Unknown",
     });
     setShowForm(true);
   };
@@ -539,6 +555,15 @@ export default function AdminPage() {
       imageUrl: "",
       description: form.description.trim() || undefined,
       ytVideoUrl: form.ytVideoUrl.trim() || undefined,
+      website: form.website.trim() || undefined,
+      discordUrl: form.discordUrl.trim() || undefined,
+      version: form.version.trim() || undefined,
+      maxPlayers: form.maxPlayers
+        ? Number.parseInt(form.maxPlayers)
+        : undefined,
+      location: form.location.trim() || undefined,
+      gameMode: form.gameMode.trim() || undefined,
+      status: form.status.trim() || undefined,
       createdAt: editingId
         ? (servers.find((s) => s.id === editingId)?.createdAt ??
           new Date().toISOString())
@@ -875,6 +900,178 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Server Details Section */}
+                <div className="mt-4 border border-border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetails((v) => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-sm font-semibold text-primary"
+                  >
+                    <span>
+                      ⚙️ Server Details{" "}
+                      <span className="text-muted-foreground font-normal text-xs">
+                        (optional)
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {showDetails ? "▲ Hide" : "▼ Show"}
+                    </span>
+                  </button>
+                  {showDetails && (
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Website URL */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-website"
+                          className="text-sm text-muted-foreground"
+                        >
+                          🌐 Website URL
+                        </label>
+                        <input
+                          id="field-website"
+                          type="url"
+                          value={form.website}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, website: e.target.value }))
+                          }
+                          placeholder="https://yourserver.com"
+                          data-ocid="admin.website.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Discord URL */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-discord"
+                          className="text-sm text-muted-foreground"
+                        >
+                          💬 Discord Invite URL
+                        </label>
+                        <input
+                          id="field-discord"
+                          type="url"
+                          value={form.discordUrl}
+                          onChange={(e) =>
+                            setForm((p) => ({
+                              ...p,
+                              discordUrl: e.target.value,
+                            }))
+                          }
+                          placeholder="https://discord.gg/..."
+                          data-ocid="admin.discord.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Minecraft Version */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-version"
+                          className="text-sm text-muted-foreground"
+                        >
+                          📦 Minecraft Version
+                        </label>
+                        <input
+                          id="field-version"
+                          type="text"
+                          value={form.version}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, version: e.target.value }))
+                          }
+                          placeholder="e.g. 1.8 - 1.20"
+                          data-ocid="admin.version.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Max Players */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-maxplayers"
+                          className="text-sm text-muted-foreground"
+                        >
+                          👥 Max Players
+                        </label>
+                        <input
+                          id="field-maxplayers"
+                          type="number"
+                          min={1}
+                          value={form.maxPlayers}
+                          onChange={(e) =>
+                            setForm((p) => ({
+                              ...p,
+                              maxPlayers: e.target.value,
+                            }))
+                          }
+                          placeholder="e.g. 200"
+                          data-ocid="admin.maxplayers.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Location */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-location"
+                          className="text-sm text-muted-foreground"
+                        >
+                          📍 Location
+                        </label>
+                        <input
+                          id="field-location"
+                          type="text"
+                          value={form.location}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, location: e.target.value }))
+                          }
+                          placeholder="e.g. US, EU, Asia"
+                          data-ocid="admin.location.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Game Mode */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-gamemode"
+                          className="text-sm text-muted-foreground"
+                        >
+                          🎮 Game Mode
+                        </label>
+                        <input
+                          id="field-gamemode"
+                          type="text"
+                          value={form.gameMode}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, gameMode: e.target.value }))
+                          }
+                          placeholder="e.g. Survival, PvP, Factions"
+                          data-ocid="admin.gamemode.input"
+                          className={inputCls}
+                        />
+                      </div>
+                      {/* Status */}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="field-status"
+                          className="text-sm text-muted-foreground"
+                        >
+                          🔴 Status
+                        </label>
+                        <select
+                          id="field-status"
+                          value={form.status}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, status: e.target.value }))
+                          }
+                          data-ocid="admin.status.select"
+                          className={inputCls}
+                        >
+                          <option value="Unknown">Unknown</option>
+                          <option value="Online">Online</option>
+                          <option value="Offline">Offline</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Form Actions */}
