@@ -1,29 +1,66 @@
-import { useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  redirect,
+} from "@tanstack/react-router";
 import AdminPage from "./pages/AdminPage";
 import HomePage from "./pages/HomePage";
 
-/**
- * Simple path-based router.
- * - "/" renders the public homepage
- * - "/zodiac-control-8472" renders the hidden admin panel
- * - All other paths fall back to the homepage
- *
- * NOTE: There is intentionally NO visible link to the admin panel anywhere
- * on the public site. Navigate directly to /zodiac-control-8472 to access it.
- */
-export default function App() {
-  const [path, setPath] = useState(window.location.pathname);
+const rootRoute = createRootRoute();
 
-  useEffect(() => {
-    // Listen for browser back/forward navigation
-    const onPop = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/best-minecraft-cracked-servers" });
+  },
+  component: () => null,
+});
 
-  if (path === "/zodiac-control-8472") {
-    return <AdminPage />;
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/best-minecraft-cracked-servers",
+  component: HomePage,
+});
+
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/zodiac-control-8472",
+  component: AdminPage,
+});
+
+const catchAllRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "*",
+  beforeLoad: () => {
+    throw redirect({ to: "/best-minecraft-cracked-servers" });
+  },
+  component: () => null,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  homeRoute,
+  adminRoute,
+  catchAllRoute,
+]);
+
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
   }
+}
 
-  return <HomePage />;
+export default function App() {
+  return (
+    <>
+      <Toaster />
+      <RouterProvider router={router} />
+    </>
+  );
 }

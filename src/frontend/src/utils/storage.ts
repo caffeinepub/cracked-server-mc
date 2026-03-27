@@ -13,9 +13,9 @@ export function getLocalReviews(serverId: string): Review[] {
 }
 
 export function saveLocalReview(review: Review): void {
-  const existing = getLocalReviews(review.serverid);
+  const existing = getLocalReviews(review.serverId);
   existing.push(review);
-  localStorage.setItem(`reviews_${review.serverid}`, JSON.stringify(existing));
+  localStorage.setItem(`reviews_${review.serverId}`, JSON.stringify(existing));
 }
 
 export function hasReviewed(serverId: string): boolean {

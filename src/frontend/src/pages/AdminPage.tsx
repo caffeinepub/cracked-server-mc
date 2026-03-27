@@ -1,1062 +1,714 @@
-import { Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
-import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useActor } from "@/hooks/useActor";
+import type {
+  Review,
+  Server,
+  SiteSettings,
+  UserSubmission,
+} from "@/types/server";
+import {
+  CheckCircle,
+  Edit,
+  Loader2,
+  LogOut,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type { backendInterface } from "../backend";
-import { useActor } from "../hooks/useActor";
-import type { Server } from "../types/server";
-import { ALL_TAGS } from "../types/server";
+import { toast } from "sonner";
 
-// ============================================================
-// TO CHANGE ADMIN PASSWORD: Update the string below
-// ============================================================
+// TO CHANGE ADMIN PASSWORD — change the value below:
 const ADMIN_PASSWORD = "dhruvyt@204";
 
 const EMPTY_FORM = {
+  id: "",
   name: "",
   ip: "",
-  rating: 3,
-  tags: [] as string[],
+  tags: "",
+  rating: "4",
   description: "",
   ytVideoUrl: "",
-  customTag: "",
   website: "",
   discordUrl: "",
   version: "",
   maxPlayers: "",
   location: "",
   gameMode: "",
-  status: "Unknown",
+  status: "Unknown" as string,
+  createdAt: "",
+  imageUrl: "",
+  featured: false,
+  serverType: "" as string,
 };
 
 type FormState = typeof EMPTY_FORM;
-type AdminTab = "servers" | "reviews" | "settings";
 
-// ─── Type helpers ────────────────────────────────────────────────────────────
-
-import type { Server as BackendServerType } from "../backend";
-type BackendServer = BackendServerType;
-
-function toFrontendServer(s: BackendServer): Server {
-  return {
-    id: s.id,
-    name: s.name,
-    ip: s.ip,
-    imageUrl: s.imageUrl,
-    createdAt: s.createdAt,
-    tags: s.tags,
-    rating: Number(s.rating),
-    description: (s.description as string[])[0] as string | undefined,
-    ytVideoUrl: s.ytVideoUrl[0],
-    website: s.website[0],
-    discordUrl: s.discordUrl[0],
-    version: s.version[0],
-    maxPlayers:
-      s.maxPlayers[0] !== undefined ? Number(s.maxPlayers[0]) : undefined,
-    location: s.location[0],
-    gameMode: s.gameMode[0],
-    status: s.status[0],
-  };
+function opt(val: string): [] | [string] {
+  return val.trim() ? [val.trim()] : [];
 }
 
-function toBackendServer(s: Server): BackendServer {
-  return {
-    id: s.id,
-    name: s.name,
-    ip: s.ip,
-    imageUrl: s.imageUrl || "",
-    createdAt: s.createdAt,
-    tags: s.tags,
-    rating: BigInt(s.rating),
-    description: (s.description ? [s.description] : []) as [] | [string],
-    ytVideoUrl: (s.ytVideoUrl ? [s.ytVideoUrl] : []) as [] | [string],
-    website: (s.website ? [s.website] : []) as [] | [string],
-    discordUrl: (s.discordUrl ? [s.discordUrl] : []) as [] | [string],
-    version: (s.version ? [s.version] : []) as [] | [string],
-    maxPlayers: (s.maxPlayers !== undefined ? [BigInt(s.maxPlayers)] : []) as
-      | []
-      | [bigint],
-    location: (s.location ? [s.location] : []) as [] | [string],
-    gameMode: (s.gameMode ? [s.gameMode] : []) as [] | [string],
-    status: (s.status ? [s.status] : []) as [] | [string],
-  };
+function optBigInt(val: string): [] | [bigint] {
+  const n = Number.parseInt(val, 10);
+  return Number.isFinite(n) ? [BigInt(n)] : [];
 }
-
-// ─── BackendReview (from actor) ───────────────────────────────────────────────
-
-interface BackendReview {
-  id: string;
-  serverId: string;
-  name: string;
-  text: string;
-  date: string;
-}
-
-// ─── Toast ───────────────────────────────────────────────────────────────────
-
-interface Toast {
-  type: "success" | "error";
-  message: string;
-}
-
-function ToastBanner({
-  toast,
-  onClose,
-}: { toast: Toast | null; onClose: () => void }) {
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(onClose, 4000);
-    return () => clearTimeout(t);
-  }, [toast, onClose]);
-
-  if (!toast) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      data-ocid="admin.toast"
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-lg shadow-lg border text-sm font-semibold ${
-        toast.type === "success"
-          ? "bg-emerald-950 border-emerald-500 text-emerald-300"
-          : "bg-red-950 border-red-500 text-red-300"
-      }`}
-    >
-      <span>{toast.message}</span>
-      <button
-        type="button"
-        onClick={onClose}
-        data-ocid="admin.toast.close_button"
-        className="opacity-70 hover:opacity-100 transition-opacity"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </motion.div>
-  );
-}
-
-// ─── StarSelector ─────────────────────────────────────────────────────────────
-
-function StarSelector({
-  value,
-  onChange,
-}: { value: number; onChange: (v: number) => void }) {
-  const [hovered, setHovered] = useState(0);
-
-  return (
-    <div className="flex gap-1" aria-label="Select rating">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => onChange(star)}
-          onMouseEnter={() => setHovered(star)}
-          onMouseLeave={() => setHovered(0)}
-          data-ocid="admin.rating.toggle"
-          className={`text-2xl transition-transform hover:scale-110 ${
-            (hovered || value) >= star ? "text-yellow-400" : "text-gray-600"
-          }`}
-          aria-label={`${star} stars`}
-        >
-          {(hovered || value) >= star ? "★" : "☆"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Reviews Tab ──────────────────────────────────────────────────────────────
-
-function ReviewsTab({
-  actor,
-  servers,
-  showToast,
-}: {
-  actor: backendInterface;
-  servers: Server[];
-  showToast: (t: Toast) => void;
-}) {
-  const [allReviews, setAllReviews] = useState<
-    Array<{ serverId: string; serverName: string; reviews: BackendReview[] }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const results = await Promise.all(
-          servers.map(async (s) => ({
-            serverId: s.id,
-            serverName: s.name,
-            reviews: (await actor.getReviews(s.id)) as BackendReview[],
-          })),
-        );
-        setAllReviews(results.filter((r) => r.reviews.length > 0));
-      } catch (err) {
-        console.error("Failed to load reviews:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [actor, servers]);
-
-  const handleDelete = async (serverId: string, reviewId: string) => {
-    try {
-      await actor.deleteReview(serverId, reviewId);
-      setAllReviews((prev) =>
-        prev
-          .map((entry) =>
-            entry.serverId === serverId
-              ? {
-                  ...entry,
-                  reviews: entry.reviews.filter((r) => r.id !== reviewId),
-                }
-              : entry,
-          )
-          .filter((entry) => entry.reviews.length > 0),
-      );
-      showToast({ type: "success", message: "✓ Review deleted." });
-    } catch (err) {
-      console.error("Failed to delete review:", err);
-      showToast({ type: "error", message: "✗ Failed to delete review." });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div
-        data-ocid="admin.reviews.loading_state"
-        className="flex flex-col items-center justify-center py-24 gap-4"
-      >
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground text-sm">Loading reviews...</p>
-      </div>
-    );
-  }
-
-  const total = allReviews.reduce((sum, s) => sum + s.reviews.length, 0);
-
-  if (total === 0) {
-    return (
-      <div data-ocid="admin.reviews.empty_state" className="text-center py-20">
-        <p className="text-5xl mb-4">💬</p>
-        <p className="text-muted-foreground">No player reviews yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      {allReviews.map((entry) => (
-        <div key={entry.serverId}>
-          <h3
-            className="font-pixel text-primary mb-3"
-            style={{ fontSize: "9px" }}
-          >
-            {entry.serverName}
-            <span
-              className="ml-2 text-muted-foreground font-sans normal-case"
-              style={{ fontSize: "11px" }}
-            >
-              ({entry.reviews.length} review
-              {entry.reviews.length !== 1 ? "s" : ""})
-            </span>
-          </h3>
-          <div className="space-y-2">
-            {entry.reviews.map((review, i) => (
-              <div
-                key={review.id}
-                data-ocid={`admin.review.item.${i + 1}`}
-                className="bg-background border border-border rounded-lg p-4 flex items-start gap-4"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-primary font-semibold text-sm">
-                      {review.name}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {review.date}
-                    </span>
-                  </div>
-                  <p className="text-foreground/80 text-sm leading-relaxed">
-                    {review.text}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(entry.serverId, review.id)}
-                  data-ocid={`admin.review.delete_button.${i + 1}`}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs border border-destructive/50 text-destructive rounded hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Site Settings Tab ────────────────────────────────────────────────────────
-
-function SiteSettingsTab({
-  actor,
-  showToast,
-}: {
-  actor: backendInterface;
-  showToast: (t: Toast) => void;
-}) {
-  const [announcement, setAnnouncementState] = useState("");
-  const [heroSubtitle, setHeroSubtitle] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
-  const [savingHero, setSavingHero] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const [ann, settings] = await Promise.all([
-          actor.getAnnouncement(),
-          actor.getSiteSettings(),
-        ]);
-        setAnnouncementState(ann);
-        setHeroSubtitle(settings.heroSubtitle);
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [actor]);
-
-  const saveAnnouncement = async () => {
-    setSavingAnnouncement(true);
-    try {
-      await actor.setAnnouncement(announcement);
-      showToast({ type: "success", message: "✓ Announcement saved!" });
-    } catch {
-      showToast({
-        type: "error",
-        message: "✗ Failed to save announcement.",
-      });
-    } finally {
-      setSavingAnnouncement(false);
-    }
-  };
-
-  const clearAnnouncement = async () => {
-    setSavingAnnouncement(true);
-    try {
-      await actor.setAnnouncement("");
-      setAnnouncementState("");
-      showToast({ type: "success", message: "✓ Announcement cleared!" });
-    } catch {
-      showToast({
-        type: "error",
-        message: "✗ Failed to clear announcement.",
-      });
-    } finally {
-      setSavingAnnouncement(false);
-    }
-  };
-
-  const saveHero = async () => {
-    setSavingHero(true);
-    try {
-      await actor.saveSiteSettings({ heroSubtitle });
-      showToast({ type: "success", message: "✓ Hero subtitle saved!" });
-    } catch {
-      showToast({ type: "error", message: "✗ Failed to save subtitle." });
-    } finally {
-      setSavingHero(false);
-    }
-  };
-
-  const inputCls =
-    "w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none input-glow focus:border-primary";
-
-  if (loading) {
-    return (
-      <div
-        data-ocid="admin.settings.loading_state"
-        className="flex flex-col items-center justify-center py-24 gap-4"
-      >
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground text-sm">Loading settings...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      {/* Announcement Banner */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="mb-4">
-          <h3 className="text-foreground font-semibold text-base mb-1">
-            📢 Site-wide Announcement
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            Displays a dismissable banner at the top of the public site. Leave
-            blank to hide it.
-          </p>
-        </div>
-        <textarea
-          rows={3}
-          value={announcement}
-          onChange={(e) => setAnnouncementState(e.target.value)}
-          placeholder="e.g. 🎉 New servers added! Check out the latest Lifesteal SMP..."
-          data-ocid="admin.announcement.textarea"
-          className={`${inputCls} resize-none mb-3`}
-        />
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={saveAnnouncement}
-            disabled={savingAnnouncement}
-            data-ocid="admin.announcement.save_button"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {savingAnnouncement && <Loader2 className="w-3 h-3 animate-spin" />}
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={clearAnnouncement}
-            disabled={savingAnnouncement}
-            data-ocid="admin.announcement.delete_button"
-            className="px-4 py-2 border border-destructive/50 text-destructive rounded text-sm hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-50"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-
-      {/* Hero Subtitle */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="mb-4">
-          <h3 className="text-foreground font-semibold text-base mb-1">
-            🏠 Homepage Hero Subtitle
-          </h3>
-          <p className="text-muted-foreground text-xs">
-            Overrides the default subtitle text shown below the main heading on
-            the homepage.
-          </p>
-        </div>
-        <input
-          type="text"
-          value={heroSubtitle}
-          onChange={(e) => setHeroSubtitle(e.target.value)}
-          placeholder="e.g. The #1 source for cracked Minecraft servers. Updated daily."
-          data-ocid="admin.hero_subtitle.input"
-          className={`${inputCls} mb-3`}
-        />
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={saveHero}
-            disabled={savingHero}
-            data-ocid="admin.hero_subtitle.save_button"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {savingHero && <Loader2 className="w-3 h-3 animate-spin" />}
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main AdminPage ───────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const { actor, isFetching } = useActor();
-  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [authError, setAuthError] = useState("");
+
+  // Servers tab
   const [servers, setServers] = useState<Server[]>([]);
-  const [loadingServers, setLoadingServers] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [serversLoading, setServersLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<AdminTab>("servers");
-  const [toast, setToast] = useState<Toast | null>(null);
-  const [publishing, setPublishing] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>({ ...EMPTY_FORM });
+  const [lookingUp, setLookingUp] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const showToast = useCallback((t: Toast) => {
-    setToast(t);
-  }, []);
+  // Submissions tab
+  const [submissions, setSubmissions] = useState<UserSubmission[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
-  // Auth check
-  useEffect(() => {
-    const entered = window.prompt("Enter admin password:");
-    if (entered === ADMIN_PASSWORD) {
-      setAuthenticated(true);
+  // Reviews tab
+  const [reviewsByServer, setReviewsByServer] = useState<
+    Record<string, Review[]>
+  >({});
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // Site Settings tab
+  const [announcement, setAnnouncement] = useState("");
+  const [heroSubtitle, setHeroSubtitle] = useState("");
+  const [submissionsEnabled, setSubmissionsEnabled] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const handleLogin = () => {
+    if (password === ADMIN_PASSWORD) {
+      setAuthed(true);
+      setAuthError("");
     } else {
-      window.location.replace("/");
+      setAuthError("Incorrect password.");
     }
-  }, []);
+  };
 
-  // Load servers from backend
-  useEffect(() => {
-    if (!authenticated || !actor || isFetching) return;
-    (async () => {
-      try {
-        const raw = await actor.getServers();
-        setServers((raw as Array<BackendServer>).map(toFrontendServer));
-      } catch (err) {
-        console.error("Failed to load servers:", err);
-      } finally {
-        setLoadingServers(false);
-      }
-    })();
-  }, [authenticated, actor, isFetching]);
-
-  const refreshServers = useCallback(async () => {
+  const loadServers = useCallback(async () => {
     if (!actor) return;
+    setServersLoading(true);
     try {
-      const raw = await actor.getServers();
-      setServers((raw as Array<BackendServer>).map(toFrontendServer));
-    } catch (err) {
-      console.error("Failed to refresh servers:", err);
+      const s = (await actor.getServers()) as unknown as Server[];
+      setServers(s);
+    } catch (e: any) {
+      toast.error(`Failed to load servers: ${e?.message ?? e}`);
+    } finally {
+      setServersLoading(false);
     }
   }, [actor]);
 
-  const handleAdd = () => {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setShowForm(true);
-  };
-
-  const handleEdit = (server: Server) => {
-    setEditingId(server.id);
-    setForm({
-      name: server.name,
-      ip: server.ip,
-      rating: server.rating,
-      tags: [...server.tags],
-      description: server.description ?? "",
-      ytVideoUrl: server.ytVideoUrl ?? "",
-      customTag: "",
-      website: server.website ?? "",
-      discordUrl: server.discordUrl ?? "",
-      version: server.version ?? "",
-      maxPlayers:
-        server.maxPlayers !== undefined ? String(server.maxPlayers) : "",
-      location: server.location ?? "",
-      gameMode: server.gameMode ?? "",
-      status: server.status ?? "Unknown",
-    });
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string, name: string) => {
+  const loadSubmissions = useCallback(async () => {
     if (!actor) return;
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    setSubmissionsLoading(true);
     try {
-      await actor.deleteServer(id);
-      await refreshServers();
-      showToast({ type: "success", message: `✓ "${name}" deleted.` });
-    } catch {
-      showToast({ type: "error", message: "✗ Failed to delete server." });
+      const subs = await (actor as any).getPendingSubmissions();
+      setSubmissions(subs);
+    } catch (e: any) {
+      toast.error(`Failed to load submissions: ${e?.message ?? e}`);
+    } finally {
+      setSubmissionsLoading(false);
     }
-  };
+  }, [actor]);
 
-  const toggleTag = (tag: string) => {
-    setForm((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter((t) => t !== tag)
-        : [...prev.tags, tag],
-    }));
-  };
+  const loadReviews = useCallback(async () => {
+    if (!actor) return;
+    setReviewsLoading(true);
+    try {
+      const s = (await actor.getServers()) as unknown as Server[];
+      const entries = await Promise.all(
+        s.map(async (sv) => {
+          const reviews = await actor.getReviews(sv.id);
+          return [sv.id, reviews] as [string, Review[]];
+        }),
+      );
+      const map: Record<string, Review[]> = {};
+      for (const [sid, reviews] of entries) map[sid] = reviews;
+      setReviewsByServer(map);
+      setServers(s);
+    } catch (e: any) {
+      toast.error(`Failed to load reviews: ${e?.message ?? e}`);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [actor]);
 
-  const addCustomTag = () => {
-    const tag = form.customTag.trim();
-    if (tag && !form.tags.includes(tag)) {
+  const loadSettings = useCallback(async () => {
+    if (!actor) return;
+    try {
+      const [ann, settings, enabled] = await Promise.all([
+        actor.getAnnouncement(),
+        actor.getSiteSettings(),
+        (actor as any).getSubmissionsEnabled(),
+      ]);
+      setAnnouncement(ann);
+      setHeroSubtitle(settings.heroSubtitle);
+      setSubmissionsEnabled(enabled);
+    } catch {
+      // silent
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (authed && actor && !isFetching) {
+      loadServers();
+      loadSettings();
+    }
+  }, [authed, actor, isFetching, loadServers, loadSettings]);
+
+  const handleLookup = async () => {
+    if (!form.ip.trim()) return;
+    setLookingUp(true);
+    try {
+      const res = await fetch(`https://api.mcsrvstat.us/3/${form.ip.trim()}`);
+      const data = await res.json();
       setForm((prev) => ({
         ...prev,
-        tags: [...prev.tags, tag],
-        customTag: "",
+        name: data.hostname || data.ip || prev.name,
+        version: data.version || prev.version,
+        maxPlayers:
+          data.players?.max != null
+            ? String(data.players.max)
+            : prev.maxPlayers,
+        status: data.online ? "Online" : "Offline",
       }));
+      toast.success("Server info loaded!");
+    } catch {
+      toast.error("Lookup failed. Check IP and try again.");
+    } finally {
+      setLookingUp(false);
     }
+  };
+
+  const openAddForm = () => {
+    setForm({ ...EMPTY_FORM });
+    setEditingId(null);
+    setShowForm(true);
+  };
+
+  const openEditForm = (server: Server) => {
+    setForm({
+      id: server.id,
+      name: server.name,
+      ip: server.ip,
+      tags: server.tags.join(", "),
+      rating: String(Number(server.rating)),
+      description: server.description[0] ?? "",
+      ytVideoUrl: server.ytVideoUrl[0] ?? "",
+      website: server.website[0] ?? "",
+      discordUrl: server.discordUrl[0] ?? "",
+      version: server.version[0] ?? "",
+      maxPlayers:
+        server.maxPlayers[0] != null
+          ? String(Number(server.maxPlayers[0]))
+          : "",
+      location: server.location[0] ?? "",
+      gameMode: server.gameMode[0] ?? "",
+      status: server.status[0] ?? "Unknown",
+      createdAt: server.createdAt,
+      imageUrl: server.imageUrl ?? "",
+      featured: server.featured ?? false,
+      serverType: server.serverType ?? "",
+    });
+    setEditingId(server.id);
+    setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!actor || !form.name.trim() || !form.ip.trim()) return;
-    const serverData: Server = {
-      id: editingId ?? crypto.randomUUID(),
-      name: form.name.trim(),
-      ip: form.ip.trim(),
-      rating: form.rating,
-      tags: form.tags,
-      imageUrl: "",
-      description: form.description.trim() || undefined,
-      ytVideoUrl: form.ytVideoUrl.trim() || undefined,
-      website: form.website.trim() || undefined,
-      discordUrl: form.discordUrl.trim() || undefined,
-      version: form.version.trim() || undefined,
-      maxPlayers: form.maxPlayers
-        ? Number.parseInt(form.maxPlayers)
-        : undefined,
-      location: form.location.trim() || undefined,
-      gameMode: form.gameMode.trim() || undefined,
-      status: form.status.trim() || undefined,
-      createdAt: editingId
-        ? (servers.find((s) => s.id === editingId)?.createdAt ??
-          new Date().toISOString())
-        : new Date().toISOString(),
-    };
+    if (!actor || !form.ip.trim() || !form.name.trim()) {
+      toast.error("Name and IP are required.");
+      return;
+    }
+    if (!form.serverType) {
+      toast.error("Server Type is required.");
+      return;
+    }
+    setSaving(true);
     try {
-      if (editingId) {
-        await actor.updateServer(toBackendServer(serverData));
-        showToast({
-          type: "success",
-          message: `✓ "${serverData.name}" updated.`,
-        });
+      const isNew = !editingId;
+      const server: Server = {
+        id: editingId || Date.now().toString(),
+        ip: form.ip.trim(),
+        name: form.name.trim(),
+        createdAt: isNew
+          ? new Date().toISOString()
+          : form.createdAt || new Date().toISOString(),
+        tags: form.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        description: opt(form.description),
+        imageUrl: form.imageUrl.trim(),
+        rating: BigInt(Number.parseInt(form.rating, 10) || 4),
+        ytVideoUrl: opt(form.ytVideoUrl),
+        website: opt(form.website),
+        discordUrl: opt(form.discordUrl),
+        version: opt(form.version),
+        maxPlayers: optBigInt(form.maxPlayers),
+        location: opt(form.location),
+        gameMode: opt(form.gameMode),
+        status: opt(form.status),
+        featured: form.featured,
+        serverType: form.serverType,
+      };
+      if (isNew) {
+        await actor.addServer(server);
+        toast.success("Server saved successfully!");
       } else {
-        await actor.addServer(toBackendServer(serverData));
-        showToast({
-          type: "success",
-          message: `✓ "${serverData.name}" added.`,
-        });
+        await actor.updateServer(server);
+        toast.success("Server saved successfully!");
       }
       setShowForm(false);
       setEditingId(null);
-      setForm(EMPTY_FORM);
-      await refreshServers();
-    } catch {
-      showToast({ type: "error", message: "✗ Failed to save server." });
+      loadServers();
+    } catch (e: any) {
+      toast.error(`Failed to save server: ${e?.message ?? String(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!actor) return;
+    if (!confirm("Delete this server?")) return;
+    try {
+      await actor.deleteServer(id);
+      toast.success("Server deleted.");
+      loadServers();
+    } catch (e: any) {
+      toast.error(`Failed to delete: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleApproveSubmission = async (id: string) => {
+    if (!actor) return;
+    try {
+      await (actor as any).approveSubmission(id);
+      toast.success("Submission approved!");
+      await Promise.all([loadSubmissions(), loadServers()]);
+    } catch (e: any) {
+      toast.error(`Failed to approve: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleRejectSubmission = async (id: string) => {
+    if (!actor) return;
+    try {
+      await (actor as any).rejectSubmission(id);
+      toast.success("Submission rejected.");
+      loadSubmissions();
+    } catch (e: any) {
+      toast.error(`Failed to reject: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleDeleteReview = async (serverId: string, reviewId: string) => {
+    if (!actor) return;
+    try {
+      await actor.deleteReview(serverId, reviewId);
+      toast.success("Review deleted.");
+      loadReviews();
+    } catch (e: any) {
+      toast.error(`Failed to delete review: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!actor) return;
+    setSettingsSaving(true);
+    try {
+      await Promise.all([
+        actor.setAnnouncement(announcement),
+        actor.saveSiteSettings({ heroSubtitle }),
+        (actor as any).setSubmissionsEnabled(submissionsEnabled),
+      ]);
+      toast.success("Settings saved and published!");
+    } catch (e: any) {
+      toast.error(`Failed to save settings: ${e?.message ?? e}`);
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
   const handlePublish = async () => {
     if (!actor) return;
-    setPublishing(true);
     try {
-      // Verify data is saved by fetching latest from backend
-      await actor.getServers();
-      showToast({
-        type: "success",
-        message: "✓ Changes published! Live site updated.",
-      });
-    } catch {
-      showToast({
-        type: "error",
-        message: "✗ Publish failed. Please try again.",
-      });
-    } finally {
-      setPublishing(false);
+      await Promise.all([
+        actor.setAnnouncement(announcement),
+        actor.saveSiteSettings({ heroSubtitle }),
+        (actor as any).setSubmissionsEnabled(submissionsEnabled),
+      ]);
+      toast.success(
+        "Changes published! Users will see updates within 30 seconds.",
+      );
+    } catch (e: any) {
+      toast.error(`Publish failed: ${e?.message ?? e}`);
     }
   };
 
-  if (!authenticated) return null;
-
-  const inputCls =
-    "w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none input-glow focus:border-primary";
-
-  const TAB_ITEMS: { id: AdminTab; label: string; icon: string }[] = [
-    { id: "servers", label: "Servers", icon: "🖥️" },
-    { id: "reviews", label: "Reviews", icon: "💬" },
-    { id: "settings", label: "Site Settings", icon: "⚙️" },
-  ];
-
-  async function lookupServerIp() {
-    const ip = form.ip.trim();
-    if (!ip) return;
-    setLookupLoading(true);
-    try {
-      const res = await fetch(
-        `https://api.mcsrvstat.us/2/${encodeURIComponent(ip)}`,
-      );
-      if (!res.ok) throw new Error("HTTP error");
-      const data = await res.json();
-      if (data.online) {
-        setForm((p) => ({
-          ...p,
-          name:
-            p.name ||
-            data.hostname ||
-            data.motd?.clean?.[0]?.replace(/§./g, "") ||
-            p.name,
-          version: p.version || data.version || p.version,
-          maxPlayers:
-            p.maxPlayers ||
-            (data.players?.max != null
-              ? String(data.players.max)
-              : p.maxPlayers),
-          status: "Online",
-          description:
-            p.description ||
-            (data.motd?.clean && data.motd.clean.length > 1
-              ? data.motd.clean
-                  .slice(1)
-                  .map((l: string) => l.replace(/§./g, ""))
-                  .join("\n")
-              : p.description),
-        }));
-      } else {
-        setForm((p) => ({ ...p, status: "Offline" }));
-        setToast({
-          type: "error",
-          message: "Server is offline — details not available",
-        });
-      }
-    } catch {
-      setToast({
-        type: "error",
-        message: "Could not reach the server status API",
-      });
-    } finally {
-      setLookupLoading(false);
-    }
+  // Login screen
+  if (!authed) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "oklch(0.07 0.008 280)" }}
+      >
+        <Card
+          className="w-full max-w-sm bg-card border-border"
+          data-ocid="admin.login_modal"
+        >
+          <CardHeader className="text-center">
+            <CardTitle
+              className="text-xl"
+              style={{ color: "oklch(0.88 0.22 158)" }}
+            >
+              ⚔ Admin Panel
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">ZodiacMC</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              data-ocid="admin.password_input"
+              type="password"
+              placeholder="Enter admin password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              className="bg-secondary/50"
+            />
+            {authError && (
+              <p
+                data-ocid="admin.login_error_state"
+                className="text-destructive text-xs"
+              >
+                {authError}
+              </p>
+            )}
+            <Button
+              data-ocid="admin.login_button"
+              className="w-full"
+              onClick={handleLogin}
+              style={{
+                background: "oklch(0.88 0.22 158 / 0.15)",
+                color: "oklch(0.88 0.22 158)",
+                border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+              }}
+            >
+              Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Toast */}
-      <ToastBanner toast={toast} onClose={() => setToast(null)} />
-
-      {/* Header */}
-      <header className="bg-card border-b border-border px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⚙️</span>
-            <h1
-              className="font-pixel text-primary"
-              style={{ fontSize: "10px", lineHeight: 1.5 }}
-            >
-              ADMIN PANEL
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={publishing || !actor}
-              data-ocid="admin.publish.primary_button"
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {publishing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <span>🚀</span>
-              )}
-              Publish Changes
-            </button>
-            <a
-              href="/"
-              data-ocid="admin.nav.link"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              ← Public Site
-            </a>
-          </div>
+    <div
+      className="min-h-screen"
+      style={{ background: "oklch(0.07 0.008 280)" }}
+    >
+      {/* Admin Header */}
+      <header
+        className="border-b border-border px-4 py-3 flex items-center justify-between"
+        style={{ background: "oklch(0.10 0.01 270)" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-bold" style={{ color: "oklch(0.88 0.22 158)" }}>
+            ⚔ ZodiacMC Admin
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            data-ocid="admin.publish_button"
+            size="sm"
+            onClick={handlePublish}
+            style={{
+              background: "oklch(0.88 0.22 158 / 0.15)",
+              color: "oklch(0.88 0.22 158)",
+              border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+            }}
+          >
+            <Save className="w-3.5 h-3.5 mr-1" /> Publish Changes
+          </Button>
+          <Button
+            data-ocid="admin.logout_button"
+            size="sm"
+            variant="outline"
+            onClick={() => setAuthed(false)}
+          >
+            <LogOut className="w-3.5 h-3.5 mr-1" /> Logout
+          </Button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Tab Nav */}
-        <div className="flex gap-1 mb-8 bg-card border border-border rounded-lg p-1">
-          {TAB_ITEMS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id);
-                setShowForm(false);
-              }}
-              data-ocid={`admin.${tab.id}.tab`}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded text-sm font-semibold transition-all ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <Tabs defaultValue="servers">
+          <TabsList className="mb-6">
+            <TabsTrigger data-ocid="admin.servers_tab" value="servers">
+              Servers
+            </TabsTrigger>
+            <TabsTrigger
+              data-ocid="admin.submissions_tab"
+              value="submissions"
+              onClick={loadSubmissions}
             >
-              <span>{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
+              Submissions
+            </TabsTrigger>
+            <TabsTrigger
+              data-ocid="admin.reviews_tab"
+              value="reviews"
+              onClick={loadReviews}
+            >
+              Reviews
+            </TabsTrigger>
+            <TabsTrigger data-ocid="admin.settings_tab" value="settings">
+              Site Settings
+            </TabsTrigger>
+          </TabsList>
 
-        {/* ===== SERVERS TAB ===== */}
-        {activeTab === "servers" && (
-          <>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-foreground font-semibold text-lg">
-                Servers ({servers.length})
+          {/* SERVERS TAB */}
+          <TabsContent value="servers">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-foreground">
+                {servers.length} Servers
               </h2>
-              <button
-                type="button"
-                onClick={handleAdd}
-                data-ocid="admin.add.primary_button"
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded font-bold text-sm hover:opacity-90 transition-opacity"
+              <Button
+                data-ocid="admin.add_server_button"
+                size="sm"
+                onClick={openAddForm}
+                style={{
+                  background: "oklch(0.88 0.22 158 / 0.15)",
+                  color: "oklch(0.88 0.22 158)",
+                  border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+                }}
               >
-                <Plus className="w-4 h-4" />
-                ADD SERVER
-              </button>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Server
+              </Button>
             </div>
 
-            {/* Add / Edit Form */}
+            {/* Server Form */}
             {showForm && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                data-ocid="admin.form.panel"
-                className="bg-card border border-primary rounded-lg p-6 mb-8 glow-green"
+              <Card
+                className="bg-card border-border mb-6"
+                data-ocid="admin.server_form"
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h3
-                    className="font-pixel text-primary"
-                    style={{ fontSize: "9px" }}
-                  >
-                    {editingId ? "EDIT SERVER" : "ADD SERVER"}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingId(null);
-                    }}
-                    data-ocid="admin.form.close_button"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Server Name */}
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="field-name"
-                      className="text-sm text-muted-foreground"
-                    >
-                      Server Name *
-                    </label>
-                    <input
-                      id="field-name"
-                      type="text"
-                      value={form.name}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, name: e.target.value }))
-                      }
-                      placeholder="HyperCraft Network"
-                      data-ocid="admin.name.input"
-                      className={inputCls}
-                    />
-                  </div>
-
-                  {/* Server IP */}
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="field-ip"
-                      className="text-sm text-muted-foreground"
-                    >
-                      Server IP *
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        id="field-ip"
-                        type="text"
-                        value={form.ip}
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {editingId ? "Edit Server" : "Add Server"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        Server Name *
+                      </Label>
+                      <Input
+                        data-ocid="admin.server_name_input"
+                        value={form.name}
                         onChange={(e) =>
-                          setForm((p) => ({ ...p, ip: e.target.value }))
+                          setForm((p) => ({ ...p, name: e.target.value }))
                         }
-                        placeholder="play.yourserver.net"
-                        data-ocid="admin.ip.input"
-                        className={`${inputCls} flex-1`}
+                        placeholder="My Cracked Server"
+                        className="bg-secondary/50 h-9 text-sm"
                       />
-                      <button
-                        type="button"
-                        onClick={lookupServerIp}
-                        disabled={lookupLoading || !form.ip.trim()}
-                        data-ocid="admin.ip.lookup_button"
-                        className="px-3 py-2 rounded text-sm font-semibold bg-[#0f0f0f] border border-[#39ff14] text-[#39ff14] hover:bg-[#39ff14]/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 whitespace-nowrap"
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">Server IP *</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          data-ocid="admin.server_ip_input"
+                          value={form.ip}
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, ip: e.target.value }))
+                          }
+                          placeholder="play.server.net"
+                          className="bg-secondary/50 h-9 text-sm font-mono flex-1"
+                        />
+                        <Button
+                          data-ocid="admin.server_lookup_button"
+                          size="sm"
+                          variant="outline"
+                          className="h-9 px-3 text-xs"
+                          onClick={handleLookup}
+                          disabled={lookingUp || !form.ip.trim()}
+                        >
+                          {lookingUp ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Search className="w-3 h-3" />
+                          )}
+                          {lookingUp ? "" : " Lookup"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Server Type - mandatory */}
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        Server Type *
+                      </Label>
+                      <Select
+                        value={form.serverType}
+                        onValueChange={(v) =>
+                          setForm((p) => ({ ...p, serverType: v }))
+                        }
                       >
-                        {lookupLoading ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : null}
-                        Lookup
-                      </button>
+                        <SelectTrigger
+                          data-ocid="admin.server_type_select"
+                          className="bg-secondary/50 h-9 text-sm"
+                        >
+                          <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Premium">Premium</SelectItem>
+                          <SelectItem value="Cracked">Cracked</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs mb-1 block">Rating (1-5)</Label>
+                      <Input
+                        data-ocid="admin.server_rating_input"
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={form.rating}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, rating: e.target.value }))
+                        }
+                        className="bg-secondary/50 h-9 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        Tags (comma-separated)
+                      </Label>
+                      <Input
+                        data-ocid="admin.server_tags_input"
+                        value={form.tags}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, tags: e.target.value }))
+                        }
+                        placeholder="PVP, Survival, Factions"
+                        className="bg-secondary/50 h-9 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        Image / Logo URL (optional)
+                      </Label>
+                      <Input
+                        data-ocid="admin.server_image_input"
+                        value={form.imageUrl}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, imageUrl: e.target.value }))
+                        }
+                        placeholder="https://example.com/logo.png"
+                        className="bg-secondary/50 h-9 text-sm"
+                      />
                     </div>
                   </div>
 
-                  {/* YouTube Video URL */}
-                  <div className="space-y-1 md:col-span-2">
-                    <label
-                      htmlFor="field-yt"
-                      className="text-sm text-muted-foreground"
-                    >
-                      YouTube Video URL{" "}
-                      <span className="text-xs opacity-60">(optional)</span>
-                    </label>
-                    <input
-                      id="field-yt"
-                      type="url"
-                      value={form.ytVideoUrl}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, ytVideoUrl: e.target.value }))
+                  {/* Featured checkbox */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="featured-checkbox"
+                      data-ocid="admin.server_featured_checkbox"
+                      checked={form.featured}
+                      onCheckedChange={(checked) =>
+                        setForm((p) => ({ ...p, featured: !!checked }))
                       }
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      data-ocid="admin.yt.input"
-                      className={inputCls}
                     />
+                    <Label
+                      htmlFor="featured-checkbox"
+                      className="text-xs cursor-pointer select-none"
+                    >
+                      ★ Featured / Paid Slot
+                    </Label>
                   </div>
 
-                  {/* Description */}
-                  <div className="space-y-1 md:col-span-2">
-                    <label
-                      htmlFor="field-description"
-                      className="text-sm text-muted-foreground"
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      id="field-description"
-                      rows={3}
+                  <div>
+                    <Label className="text-xs mb-1 block">Description</Label>
+                    <Textarea
+                      data-ocid="admin.server_description_textarea"
                       value={form.description}
                       onChange={(e) =>
                         setForm((p) => ({ ...p, description: e.target.value }))
                       }
-                      placeholder="Short description shown on the server card..."
-                      data-ocid="admin.description.textarea"
-                      className={`${inputCls} resize-none`}
+                      placeholder="Describe the server..."
+                      className="bg-secondary/50 text-sm resize-none"
+                      rows={3}
                     />
                   </div>
 
-                  {/* Rating */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Star className="w-3 h-3" /> Rating
-                    </p>
-                    <StarSelector
-                      value={form.rating}
-                      onChange={(v) => setForm((p) => ({ ...p, rating: v }))}
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      YouTube Video URL (optional)
+                    </Label>
+                    <Input
+                      data-ocid="admin.server_yt_input"
+                      value={form.ytVideoUrl}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, ytVideoUrl: e.target.value }))
+                      }
+                      placeholder="https://youtube.com/watch?v=..."
+                      className="bg-secondary/50 h-9 text-sm"
                     />
                   </div>
 
-                  {/* Tags */}
-                  <div className="space-y-2 md:col-span-2">
-                    <p className="text-sm text-muted-foreground">Tags</p>
-                    <div className="flex flex-wrap gap-2">
-                      {ALL_TAGS.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(tag)}
-                          data-ocid="admin.tag.toggle"
-                          className={`px-3 py-1 rounded-full text-xs border transition-all ${
-                            form.tags.includes(tag)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-secondary text-muted-foreground border-border hover:border-primary"
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={form.customTag}
-                        onChange={(e) =>
-                          setForm((p) => ({ ...p, customTag: e.target.value }))
-                        }
-                        onKeyDown={(e) => e.key === "Enter" && addCustomTag()}
-                        placeholder="Custom tag..."
-                        data-ocid="admin.custom_tag.input"
-                        className="flex-1 bg-secondary border border-border rounded px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none input-glow focus:border-primary"
-                      />
-                      <button
-                        type="button"
-                        onClick={addCustomTag}
-                        data-ocid="admin.add_tag.secondary_button"
-                        className="px-3 py-1.5 bg-secondary border border-border rounded text-xs hover:border-primary hover:text-primary transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {form.tags.filter(
-                      (t) => !(ALL_TAGS as readonly string[]).includes(t),
-                    ).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {form.tags
-                          .filter(
-                            (t) => !(ALL_TAGS as readonly string[]).includes(t),
-                          )
-                          .map((t) => (
-                            <span
-                              key={t}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 text-primary rounded-full text-xs"
-                            >
-                              {t}
-                              <button
-                                type="button"
-                                onClick={() => toggleTag(t)}
-                                className="hover:text-destructive"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
-                            </span>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Server Details Section */}
-                <div className="mt-4 border border-border rounded-lg overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowDetails((v) => !v)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-sm font-semibold text-primary"
-                  >
-                    <span>
-                      ⚙️ Server Details{" "}
-                      <span className="text-muted-foreground font-normal text-xs">
-                        (optional)
-                      </span>
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {showDetails ? "▲ Hide" : "▼ Show"}
-                    </span>
-                  </button>
-                  {showDetails && (
-                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Website URL */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-website"
-                          className="text-sm text-muted-foreground"
-                        >
-                          🌐 Website URL
-                        </label>
-                        <input
-                          id="field-website"
-                          type="url"
+                  <details className="group">
+                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+                      ▶ Server Details (optional fields)
+                    </summary>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Website URL
+                        </Label>
+                        <Input
+                          data-ocid="admin.server_website_input"
                           value={form.website}
                           onChange={(e) =>
                             setForm((p) => ({ ...p, website: e.target.value }))
                           }
-                          placeholder="https://yourserver.com"
-                          data-ocid="admin.website.input"
-                          className={inputCls}
+                          placeholder="https://server.net"
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Discord URL */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-discord"
-                          className="text-sm text-muted-foreground"
-                        >
-                          💬 Discord Invite URL
-                        </label>
-                        <input
-                          id="field-discord"
-                          type="url"
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Discord URL
+                        </Label>
+                        <Input
+                          data-ocid="admin.server_discord_input"
                           value={form.discordUrl}
                           onChange={(e) =>
                             setForm((p) => ({
@@ -1065,42 +717,30 @@ export default function AdminPage() {
                             }))
                           }
                           placeholder="https://discord.gg/..."
-                          data-ocid="admin.discord.input"
-                          className={inputCls}
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Minecraft Version */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-version"
-                          className="text-sm text-muted-foreground"
-                        >
-                          📦 Minecraft Version
-                        </label>
-                        <input
-                          id="field-version"
-                          type="text"
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Minecraft Version
+                        </Label>
+                        <Input
+                          data-ocid="admin.server_version_input"
                           value={form.version}
                           onChange={(e) =>
                             setForm((p) => ({ ...p, version: e.target.value }))
                           }
-                          placeholder="e.g. 1.8 - 1.20"
-                          data-ocid="admin.version.input"
-                          className={inputCls}
+                          placeholder="1.8 - 1.20"
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Max Players */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-maxplayers"
-                          className="text-sm text-muted-foreground"
-                        >
-                          👥 Max Players
-                        </label>
-                        <input
-                          id="field-maxplayers"
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Max Players
+                        </Label>
+                        <Input
+                          data-ocid="admin.server_maxplayers_input"
                           type="number"
-                          min={1}
                           value={form.maxPlayers}
                           onChange={(e) =>
                             setForm((p) => ({
@@ -1108,213 +748,457 @@ export default function AdminPage() {
                               maxPlayers: e.target.value,
                             }))
                           }
-                          placeholder="e.g. 200"
-                          data-ocid="admin.maxplayers.input"
-                          className={inputCls}
+                          placeholder="100"
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Location */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-location"
-                          className="text-sm text-muted-foreground"
-                        >
-                          📍 Location
-                        </label>
-                        <input
-                          id="field-location"
-                          type="text"
+                      <div>
+                        <Label className="text-xs mb-1 block">Location</Label>
+                        <Input
+                          data-ocid="admin.server_location_input"
                           value={form.location}
                           onChange={(e) =>
                             setForm((p) => ({ ...p, location: e.target.value }))
                           }
-                          placeholder="e.g. US, EU, Asia"
-                          data-ocid="admin.location.input"
-                          className={inputCls}
+                          placeholder="US, EU, Asia..."
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Game Mode */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-gamemode"
-                          className="text-sm text-muted-foreground"
-                        >
-                          🎮 Game Mode
-                        </label>
-                        <input
-                          id="field-gamemode"
-                          type="text"
+                      <div>
+                        <Label className="text-xs mb-1 block">Game Mode</Label>
+                        <Input
+                          data-ocid="admin.server_gamemode_input"
                           value={form.gameMode}
                           onChange={(e) =>
                             setForm((p) => ({ ...p, gameMode: e.target.value }))
                           }
-                          placeholder="e.g. Survival, PvP, Factions"
-                          data-ocid="admin.gamemode.input"
-                          className={inputCls}
+                          placeholder="Survival, PvP, Factions..."
+                          className="bg-secondary/50 h-9 text-sm"
                         />
                       </div>
-                      {/* Status */}
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="field-status"
-                          className="text-sm text-muted-foreground"
-                        >
-                          🔴 Status
-                        </label>
-                        <select
-                          id="field-status"
+                      <div>
+                        <Label className="text-xs mb-1 block">Status</Label>
+                        <Select
                           value={form.status}
-                          onChange={(e) =>
-                            setForm((p) => ({ ...p, status: e.target.value }))
+                          onValueChange={(v) =>
+                            setForm((p) => ({ ...p, status: v }))
                           }
-                          data-ocid="admin.status.select"
-                          className={inputCls}
                         >
-                          <option value="Unknown">Unknown</option>
-                          <option value="Online">Online</option>
-                          <option value="Offline">Offline</option>
-                        </select>
+                          <SelectTrigger
+                            data-ocid="admin.server_status_select"
+                            className="bg-secondary/50 h-9 text-sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Online">Online</SelectItem>
+                            <SelectItem value="Offline">Offline</SelectItem>
+                            <SelectItem value="Unknown">Unknown</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </details>
 
-                {/* Form Actions */}
-                <div className="flex gap-3 mt-6 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingId(null);
-                    }}
-                    data-ocid="admin.form.cancel_button"
-                    className="px-4 py-2 text-sm border border-border rounded hover:border-muted-foreground transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    data-ocid="admin.form.save_button"
-                    disabled={!form.name.trim() || !form.ip.trim() || !actor}
-                    className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-primary-foreground rounded font-bold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4" />
-                    {editingId ? "SAVE CHANGES" : "ADD SERVER"}
-                  </button>
-                </div>
-              </motion.div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      data-ocid="admin.server_save_button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      style={{
+                        background: "oklch(0.88 0.22 158 / 0.15)",
+                        color: "oklch(0.88 0.22 158)",
+                        border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+                      }}
+                    >
+                      {saving ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      {saving ? "Saving..." : "Save Server"}
+                    </Button>
+                    <Button
+                      data-ocid="admin.server_cancel_button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowForm(false);
+                        setEditingId(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Server List */}
-            {loadingServers ? (
+            {serversLoading ? (
               <div
-                data-ocid="admin.servers.loading_state"
-                className="flex flex-col items-center justify-center py-24 gap-4"
+                data-ocid="admin.servers_loading_state"
+                className="text-center py-10 text-muted-foreground"
               >
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                <p className="text-muted-foreground text-sm">
-                  Loading servers...
-                </p>
+                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />{" "}
+                Loading servers...
               </div>
             ) : servers.length === 0 ? (
               <div
-                data-ocid="admin.servers.empty_state"
-                className="text-center py-20"
+                data-ocid="admin.servers_empty_state"
+                className="text-center py-10 text-muted-foreground"
               >
-                <p className="text-5xl mb-4">📋</p>
-                <p className="text-muted-foreground">
-                  No servers yet. Click "ADD SERVER" to get started.
-                </p>
+                No servers yet.
               </div>
             ) : (
-              <div className="space-y-3" data-ocid="admin.servers.table">
+              <div className="space-y-2">
                 {servers.map((server, i) => (
-                  <motion.div
+                  <Card
                     key={server.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    data-ocid={`admin.server.item.${i + 1}`}
-                    className="bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+                    data-ocid={`admin.servers.item.${i + 1}`}
+                    className="bg-card border-border"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="font-pixel text-primary truncate"
-                        style={{ fontSize: "9px" }}
-                      >
-                        {server.name}
-                      </p>
-                      <p className="text-muted-foreground text-xs font-mono mt-1">
-                        {server.ip}
-                      </p>
-                      {server.description && (
-                        <p className="text-muted-foreground text-xs mt-1 line-clamp-1">
-                          {server.description}
-                        </p>
-                      )}
-                      {server.ytVideoUrl && (
-                        <p className="text-xs mt-1 text-red-400">
-                          📺 YouTube video linked
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-yellow-400 text-xs">
-                          {"★".repeat(server.rating)}
-                          {"☆".repeat(5 - server.rating)}
-                        </span>
-                        <div className="flex gap-1">
-                          {server.tags.slice(0, 3).map((tag) => (
+                    <CardContent className="p-3 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {server.featured && (
+                            <span className="text-yellow-400 text-xs">★</span>
+                          )}
+                          <p className="font-medium text-sm text-foreground truncate">
+                            {server.name}
+                          </p>
+                          {server.serverType && (
                             <span
-                              key={tag}
-                              className="text-xs px-1.5 py-0.5 bg-secondary rounded text-muted-foreground"
+                              className="text-xs px-1.5 py-0.5 rounded border"
+                              style={
+                                server.serverType === "Premium"
+                                  ? {
+                                      background: "oklch(0.82 0.16 205 / 0.15)",
+                                      color: "oklch(0.82 0.16 205)",
+                                      borderColor: "oklch(0.82 0.16 205 / 0.4)",
+                                    }
+                                  : {
+                                      background: "oklch(0.88 0.22 158 / 0.15)",
+                                      color: "oklch(0.88 0.22 158)",
+                                      borderColor: "oklch(0.88 0.22 158 / 0.4)",
+                                    }
+                              }
                             >
-                              {tag}
-                            </span>
-                          ))}
-                          {server.tags.length > 3 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{server.tags.length - 3}
+                              {server.serverType}
                             </span>
                           )}
                         </div>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {server.ip}
+                        </p>
                       </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(server)}
-                        data-ocid={`admin.server.edit_button.${i + 1}`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:border-primary hover:text-primary transition-colors"
-                      >
-                        <Pencil className="w-3 h-3" /> Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(server.id, server.name)}
-                        data-ocid={`admin.server.delete_button.${i + 1}`}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-destructive/50 text-destructive rounded hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                      >
-                        <Trash2 className="w-3 h-3" /> Delete
-                      </button>
-                    </div>
-                  </motion.div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          data-ocid={`admin.servers.edit_button.${i + 1}`}
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          onClick={() => openEditForm(server)}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          data-ocid={`admin.servers.delete_button.${i + 1}`}
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(server.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
-          </>
-        )}
+          </TabsContent>
 
-        {/* ===== REVIEWS TAB ===== */}
-        {activeTab === "reviews" && actor && (
-          <ReviewsTab actor={actor} servers={servers} showToast={showToast} />
-        )}
+          {/* SUBMISSIONS TAB */}
+          <TabsContent value="submissions">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-foreground">
+                Pending Submissions
+              </h2>
+              <Button
+                data-ocid="admin.refresh_submissions_button"
+                size="sm"
+                variant="outline"
+                onClick={loadSubmissions}
+                disabled={submissionsLoading}
+              >
+                {submissionsLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  "Refresh"
+                )}
+              </Button>
+            </div>
+            {submissionsLoading ? (
+              <div
+                data-ocid="admin.submissions_loading_state"
+                className="text-center py-10 text-muted-foreground"
+              >
+                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                Loading submissions...
+              </div>
+            ) : submissions.length === 0 ? (
+              <div
+                data-ocid="admin.submissions_empty_state"
+                className="text-center py-10 text-muted-foreground"
+              >
+                No pending submissions.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {submissions.map((sub, i) => (
+                  <Card
+                    key={sub.id}
+                    data-ocid={`admin.submissions.item.${i + 1}`}
+                    className="bg-card border-border"
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="font-semibold text-sm text-foreground">
+                              {sub.name}
+                            </p>
+                            {sub.serverType && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded border"
+                                style={
+                                  sub.serverType === "Premium"
+                                    ? {
+                                        background:
+                                          "oklch(0.82 0.16 205 / 0.15)",
+                                        color: "oklch(0.82 0.16 205)",
+                                        borderColor:
+                                          "oklch(0.82 0.16 205 / 0.4)",
+                                      }
+                                    : {
+                                        background:
+                                          "oklch(0.88 0.22 158 / 0.15)",
+                                        color: "oklch(0.88 0.22 158)",
+                                        borderColor:
+                                          "oklch(0.88 0.22 158 / 0.4)",
+                                      }
+                                }
+                              >
+                                {sub.serverType}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-mono text-xs text-muted-foreground mb-1">
+                            {sub.ip}
+                          </p>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mb-1">
+                            {sub.version && <span>v{sub.version}</span>}
+                            {sub.gameMode && <span>• {sub.gameMode}</span>}
+                            <span>• by {sub.submitterName}</span>
+                          </div>
+                          {sub.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {sub.description}
+                            </p>
+                          )}
+                          {sub.imageUrl && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                              Logo: {sub.imageUrl}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            data-ocid={`admin.submissions.confirm_button.${i + 1}`}
+                            size="sm"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => handleApproveSubmission(sub.id)}
+                            style={{
+                              background: "oklch(0.88 0.22 158 / 0.15)",
+                              color: "oklch(0.88 0.22 158)",
+                              border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+                            }}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            data-ocid={`admin.submissions.delete_button.${i + 1}`}
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRejectSubmission(sub.id)}
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-        {/* ===== SETTINGS TAB ===== */}
-        {activeTab === "settings" && actor && (
-          <SiteSettingsTab actor={actor} showToast={showToast} />
-        )}
-      </main>
+          {/* REVIEWS TAB */}
+          <TabsContent value="reviews">
+            <h2 className="font-semibold text-foreground mb-4">
+              Player Reviews
+            </h2>
+            {reviewsLoading ? (
+              <div
+                data-ocid="admin.reviews_loading_state"
+                className="text-center py-10 text-muted-foreground"
+              >
+                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />{" "}
+                Loading reviews...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {servers.map((server) => {
+                  const reviews = reviewsByServer[server.id] ?? [];
+                  if (reviews.length === 0) return null;
+                  return (
+                    <div key={server.id}>
+                      <h3 className="text-sm font-semibold mb-2 text-foreground">
+                        {server.name}
+                      </h3>
+                      <div className="space-y-2">
+                        {reviews.map((r, ri) => (
+                          <Card
+                            key={r.id}
+                            data-ocid={`admin.reviews.item.${ri + 1}`}
+                            className="bg-card border-border"
+                          >
+                            <CardContent className="p-3 flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium">
+                                    {r.name}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(r.date).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {r.text}
+                                </p>
+                              </div>
+                              <Button
+                                data-ocid={`admin.reviews.delete_button.${ri + 1}`}
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10"
+                                onClick={() =>
+                                  handleDeleteReview(server.id, r.id)
+                                }
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {servers.every((s) => !reviewsByServer[s.id]?.length) && (
+                  <div
+                    data-ocid="admin.reviews_empty_state"
+                    className="text-center py-10 text-muted-foreground"
+                  >
+                    No reviews yet.
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* SETTINGS TAB */}
+          <TabsContent value="settings">
+            <Card
+              className="bg-card border-border"
+              data-ocid="admin.settings_panel"
+            >
+              <CardHeader>
+                <CardTitle className="text-base">Site Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-xs mb-1 block">
+                    Announcement Banner (leave blank to hide)
+                  </Label>
+                  <Textarea
+                    data-ocid="admin.announcement_textarea"
+                    value={announcement}
+                    onChange={(e) => setAnnouncement(e.target.value)}
+                    placeholder="e.g. Server maintenance on Sunday 2AM UTC"
+                    className="bg-secondary/50 text-sm resize-none"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Hero Subtitle</Label>
+                  <Input
+                    data-ocid="admin.hero_subtitle_input"
+                    value={heroSubtitle}
+                    onChange={(e) => setHeroSubtitle(e.target.value)}
+                    placeholder="Find FREE Cracked Minecraft Servers"
+                    className="bg-secondary/50 h-9 text-sm"
+                  />
+                </div>
+
+                {/* User Submissions Toggle */}
+                <div
+                  className="flex items-center justify-between py-3 px-3 rounded-md border border-border"
+                  style={{ background: "oklch(0.12 0.01 270)" }}
+                >
+                  <div>
+                    <Label className="text-sm font-medium block">
+                      Allow User Server Submissions
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      When enabled, users can submit servers for admin review.
+                    </p>
+                  </div>
+                  <Switch
+                    data-ocid="admin.submissions_toggle"
+                    checked={submissionsEnabled}
+                    onCheckedChange={(checked) => {
+                      setSubmissionsEnabled(checked);
+                      if (actor) (actor as any).setSubmissionsEnabled(checked);
+                    }}
+                  />
+                </div>
+
+                <Button
+                  data-ocid="admin.settings_save_button"
+                  onClick={handleSaveSettings}
+                  disabled={settingsSaving}
+                  style={{
+                    background: "oklch(0.88 0.22 158 / 0.15)",
+                    color: "oklch(0.88 0.22 158)",
+                    border: "1px solid oklch(0.88 0.22 158 / 0.4)",
+                  }}
+                >
+                  {settingsSaving ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  {settingsSaving ? "Saving..." : "Save Settings"}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

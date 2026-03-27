@@ -34,6 +34,21 @@ export interface Server {
     location: [] | [string];
     gameMode: [] | [string];
     status: [] | [string];
+    featured: boolean;
+    serverType: string;
+}
+export interface UserSubmission {
+    id: string;
+    name: string;
+    ip: string;
+    version: string;
+    gameMode: string;
+    description: string;
+    imageUrl: string;
+    serverType: string;
+    submitterName: string;
+    submittedAt: string;
+    submissionStatus: string;
 }
 export interface backendInterface {
     addReview(review: Review): Promise<void>;
@@ -49,4 +64,10 @@ export interface backendInterface {
     seedSampleServers(): Promise<void>;
     setAnnouncement(text: string): Promise<void>;
     updateServer(server: Server): Promise<void>;
+    getSubmissionsEnabled(): Promise<boolean>;
+    setSubmissionsEnabled(enabled: boolean): Promise<void>;
+    submitServer(submission: UserSubmission): Promise<void>;
+    getPendingSubmissions(): Promise<Array<UserSubmission>>;
+    approveSubmission(id: string): Promise<void>;
+    rejectSubmission(id: string): Promise<void>;
 }

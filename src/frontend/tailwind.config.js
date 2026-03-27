@@ -10,14 +10,11 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     extend: {
       fontFamily: {
-        // Minecraft pixel font - use class: font-pixel
-        pixel: ["'Press Start 2P'", "monospace"],
+        mono: ["'JetBrains Mono'", "'Courier New'", "monospace"],
       },
       colors: {
         border: "oklch(var(--border))",
@@ -75,11 +72,6 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      boxShadow: {
-        xs: "0 1px 2px 0 rgba(0,0,0,0.05)",
-        "glow-sm": "0 0 10px rgba(34,197,94,0.3)",
-        "glow-md": "0 0 20px rgba(34,197,94,0.5), 0 0 40px rgba(34,197,94,0.25)",
       },
       keyframes: {
         "accordion-down": {

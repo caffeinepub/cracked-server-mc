@@ -2,127 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 
-  HOW TO CHANGE THE ADMIN PASSWORD:
-  Open src/frontend/src/pages/AdminPage.tsx and find the line:
-    const ADMIN_PASSWORD = "Admin1234";
-  Change "Admin1234" to your desired password.
-
-  HOW THE LOCALSTORAGE DATA STRUCTURE WORKS:
-  Key: "mc_servers"
-  Value: JSON array of Server objects:
-  [
-    {
-      "id": "uuid-string",
-      "name": "Server Name",
-      "ip": "play.servername.net",
-      "rating": 4,
-      "tags": ["Survival", "PVP"],
-      "imageUrl": "https://example.com/image.jpg",
-      "createdAt": "2026-01-01T00:00:00.000Z"
-    }
-  ]
-
-  HOW TO MANUALLY ADD A SERVER VIA BROWSER CONSOLE:
-  1. Open DevTools (F12) > Console
-  2. Run:
-     const servers = JSON.parse(localStorage.getItem('mc_servers') || '[]');
-     servers.push({
-       id: crypto.randomUUID(),
-       name: 'My Server',
-       ip: 'play.myserver.net',
-       rating: 5,
-       tags: ['Survival', 'PVP'],
-       imageUrl: 'https://picsum.photos/seed/myserver/400/300',
-       createdAt: new Date().toISOString()
-     });
-     localStorage.setItem('mc_servers', JSON.stringify(servers));
-  3. Refresh the page.
-*/
-
 @layer base {
-  /* Dark Minecraft theme - permanent dark mode */
   :root {
-    --radius: 0.5rem;
-    /* Page background: near-black #0A0A0A */
-    --background: 0.1 0 0;
-    /* Primary text: near-white #F5F5F5 */
-    --foreground: 0.97 0 0;
-    /* Card panels: #111111 */
-    --card: 0.13 0 0;
-    --card-foreground: 0.97 0 0;
-    --popover: 0.15 0 0;
-    --popover-foreground: 0.97 0 0;
-    /* Primary accent: emerald green #22C55E => oklch(0.72 0.19 142) */
-    --primary: 0.72 0.19 142;
-    --primary-foreground: 0.1 0 0;
-    /* Secondary: dark panel */
-    --secondary: 0.18 0 0;
-    --secondary-foreground: 0.97 0 0;
-    /* Muted: #9CA3AF gray */
-    --muted: 0.18 0 0;
-    --muted-foreground: 0.65 0.01 264;
-    /* Accent same as primary */
-    --accent: 0.72 0.19 142;
-    --accent-foreground: 0.1 0 0;
-    /* Destructive: red */
-    --destructive: 0.62 0.22 27;
-    --destructive-foreground: 0.97 0 0;
-    /* Borders: subtle dark */
-    --border: 0.22 0 0;
-    --input: 0.18 0 0;
-    --ring: 0.72 0.19 142;
-    /* Charts */
-    --chart-1: 0.72 0.19 142;
-    --chart-2: 0.6 0.15 264;
-    --chart-3: 0.65 0.16 300;
-    --chart-4: 0.63 0.22 27;
-    --chart-5: 0.71 0 0;
-    /* Sidebar */
-    --sidebar: 0.13 0 0;
-    --sidebar-foreground: 0.97 0 0;
-    --sidebar-primary: 0.72 0.19 142;
-    --sidebar-primary-foreground: 0.1 0 0;
-    --sidebar-accent: 0.18 0 0;
-    --sidebar-accent-foreground: 0.97 0 0;
-    --sidebar-border: 0.22 0 0;
-    --sidebar-ring: 0.72 0.19 142;
-  }
-
-  /* Force dark mode always for this app */
-  .dark {
-    --background: 0.1 0 0;
-    --foreground: 0.97 0 0;
-    --card: 0.13 0 0;
-    --card-foreground: 0.97 0 0;
-    --popover: 0.15 0 0;
-    --popover-foreground: 0.97 0 0;
-    --primary: 0.72 0.19 142;
-    --primary-foreground: 0.1 0 0;
-    --secondary: 0.18 0 0;
-    --secondary-foreground: 0.97 0 0;
-    --muted: 0.18 0 0;
-    --muted-foreground: 0.65 0.01 264;
-    --accent: 0.72 0.19 142;
-    --accent-foreground: 0.1 0 0;
-    --destructive: 0.62 0.22 27;
-    --destructive-foreground: 0.97 0 0;
-    --border: 0.22 0 0;
-    --input: 0.18 0 0;
-    --ring: 0.72 0.19 142;
-    --chart-1: 0.72 0.19 142;
-    --chart-2: 0.6 0.15 264;
-    --chart-3: 0.65 0.16 300;
-    --chart-4: 0.63 0.22 27;
-    --chart-5: 0.71 0 0;
-    --sidebar: 0.13 0 0;
-    --sidebar-foreground: 0.97 0 0;
-    --sidebar-primary: 0.72 0.19 142;
-    --sidebar-primary-foreground: 0.1 0 0;
-    --sidebar-accent: 0.18 0 0;
-    --sidebar-accent-foreground: 0.97 0 0;
-    --sidebar-border: 0.22 0 0;
-    --sidebar-ring: 0.72 0.19 142;
+    --radius: 0.375rem;
+    /* Background: #0a0a0f near-black */
+    --background: 0.07 0.008 280;
+    --foreground: 0.96 0.005 280;
+    /* Cards: #111827 */
+    --card: 0.13 0.01 265;
+    --card-foreground: 0.96 0.005 280;
+    --popover: 0.13 0.01 265;
+    --popover-foreground: 0.96 0.005 280;
+    /* Primary: neon green #00ff88 → oklch(0.88 0.22 158) */
+    --primary: 0.88 0.22 158;
+    --primary-foreground: 0.07 0.008 280;
+    /* Secondary: subtle dark panel */
+    --secondary: 0.18 0.012 265;
+    --secondary-foreground: 0.96 0.005 280;
+    /* Muted */
+    --muted: 0.18 0.012 265;
+    --muted-foreground: 0.6 0.01 270;
+    /* Accent: cyan #00d4ff → oklch(0.82 0.16 205) */
+    --accent: 0.82 0.16 205;
+    --accent-foreground: 0.07 0.008 280;
+    /* Destructive */
+    --destructive: 0.6 0.22 27;
+    --destructive-foreground: 0.96 0.005 280;
+    --border: 0.22 0.012 265;
+    --input: 0.18 0.012 265;
+    --ring: 0.88 0.22 158;
+    --chart-1: 0.88 0.22 158;
+    --chart-2: 0.82 0.16 205;
+    --chart-3: 0.68 0.2 295;
+    --chart-4: 0.6 0.22 27;
+    --chart-5: 0.75 0.18 158;
+    --sidebar: 0.13 0.01 265;
+    --sidebar-foreground: 0.96 0.005 280;
+    --sidebar-primary: 0.88 0.22 158;
+    --sidebar-primary-foreground: 0.07 0.008 280;
+    --sidebar-accent: 0.18 0.012 265;
+    --sidebar-accent-foreground: 0.96 0.005 280;
+    --sidebar-border: 0.22 0.012 265;
+    --sidebar-ring: 0.88 0.22 158;
   }
 
   * {
@@ -130,50 +51,43 @@
   }
 
   html {
-    @apply dark;
+    scroll-behavior: smooth;
+  }
+
+  html.dark {
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: "General Sans", system-ui, -apple-system, sans-serif;
+    font-family: "Satoshi", system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer components {
-  /* Neon green glow effect for cards and interactive elements */
+  .neon-green {
+    color: oklch(0.88 0.22 158);
+  }
+  .neon-cyan {
+    color: oklch(0.82 0.16 205);
+  }
+  .neon-purple {
+    color: oklch(0.68 0.2 295);
+  }
   .glow-green {
-    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4), 0 0 30px rgba(34, 197, 94, 0.2);
-    transition: box-shadow 0.3s ease;
+    box-shadow: 0 0 12px oklch(0.88 0.22 158 / 0.4), 0 0 30px
+      oklch(0.88 0.22 158 / 0.15);
   }
-
-  .glow-green:hover {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 40px rgba(34, 197, 94, 0.3);
+  .glow-cyan {
+    box-shadow: 0 0 12px oklch(0.82 0.16 205 / 0.4), 0 0 30px
+      oklch(0.82 0.16 205 / 0.15);
   }
-
-  /* Server card hover glow */
   .server-card {
-    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    transition: box-shadow 0.25s ease, transform 0.2s ease;
   }
-
   .server-card:hover {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px
-      rgba(34, 197, 94, 0.25);
+    box-shadow: 0 0 20px oklch(0.88 0.22 158 / 0.25), 0 0 1px
+      oklch(0.88 0.22 158 / 0.6);
     transform: translateY(-2px);
-  }
-
-  /* Pixel text with green glow */
-  .pixel-glow {
-    text-shadow: 0 0 10px rgba(34, 197, 94, 0.6), 0 0 20px
-      rgba(34, 197, 94, 0.3);
-  }
-
-  /* Green border glow for inputs */
-  .input-glow {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-  }
-
-  .input-glow:focus {
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.6), 0 0 10px
-      rgba(34, 197, 94, 0.3);
   }
 }

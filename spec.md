@@ -1,29 +1,33 @@
-# Cracked Server MC
+# ZodiacMC
 
 ## Current State
-Server type: id, name, ip, rating, tags, imageUrl, description (opt), ytVideoUrl (opt), createdAt.
-Admin Servers tab: name, ip, rating, tags, ytVideoUrl, description.
-Server cards: name, ip copy, tags, description, yt embed, reviews.
+HomePage.tsx has a server listing section with:
+- Tag-based filters (PVP, Survival, etc.) as pill buttons
+- Search bar (name/IP)
+- Featured servers sort to top with ★ icon
+- Server cards showing: name, IP, tags, description, detail chips, links, YouTube embed, reviews
+- No image/logo shown on cards
+- No dedicated filters for version, gamemode, server type, or featured toggle
 
 ## Requested Changes (Diff)
 
 ### Add
-- New optional server fields: website (URL), discordUrl, version (e.g. 1.8-1.20), maxPlayers, location, gameMode, status (Online/Offline/Unknown)
-- Admin form new section with inputs for all new fields
-- Server cards display new fields as badges/links
-- Backend V3 type with migration from V2
+- Image/Logo display on server cards (use `server.imageUrl`; show a placeholder if empty)
+- Dedicated filter dropdowns/buttons for: Version, Gamemode, Server Type (Premium/Cracked), Featured (toggle)
+- Filter state variables for version, gamemode, serverType, featured
+- Apply all filters together (AND logic) on top of existing search
 
 ### Modify
-- src/frontend/src/types/server.ts
-- src/backend/main.mo
-- src/frontend/src/pages/AdminPage.tsx
-- src/frontend/src/pages/HomePage.tsx
+- ServerCard component: add image/logo section at the top (left side of header or above it)
+- Filter section: replace or supplement the ALL_TAGS pill row with the four new filters (version, gamemode, server type, featured)
+- `filtered` array computation: incorporate the new filter criteria
 
 ### Remove
-- Nothing
+- Nothing removed; tag filters can stay as secondary filters
 
 ## Implementation Plan
-1. Update types/server.ts with new optional fields
-2. Update backend main.mo: V3 type, migration, updated endpoints
-3. Update AdminPage.tsx: form inputs for new fields
-4. Update HomePage.tsx: display new fields on cards
+1. Add filter state: `filterVersion`, `filterGamemode`, `filterServerType`, `filterFeatured` to HomePage
+2. Derive unique version/gamemode values from loaded servers for dropdown options
+3. Render filter bar with: search input, Version select, Gamemode select, Server Type select (All/Premium/Cracked), Featured toggle button
+4. Update `filtered` logic to apply all four new filters
+5. Update ServerCard to show `imageUrl` as a small logo/thumbnail (left side of card header); if no imageUrl, show a Minecraft pickaxe/sword icon placeholder
